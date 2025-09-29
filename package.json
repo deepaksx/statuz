@@ -1,0 +1,66 @@
+{
+  "name": "statuz",
+  "version": "1.0.0",
+  "description": "Desktop app for monitoring WhatsApp groups and generating project status reports",
+  "main": "dist/main/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:background\" \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:background": "cd packages/background && npm run dev",
+    "dev:renderer": "cd apps/renderer && npm run dev",
+    "dev:electron": "wait-on http://localhost:5173 && electron dist/main/main.js",
+    "build": "npm run build:all && npm run build:electron",
+    "build:all": "npm run build:shared && npm run build:db && npm run build:background && npm run build:renderer && npm run build:main",
+    "build:shared": "cd packages/shared && npm run build",
+    "build:db": "cd packages/db && npm run build",
+    "build:background": "cd packages/background && npm run build",
+    "build:renderer": "cd apps/renderer && npm run build",
+    "build:main": "cd apps/desktop && npm run build",
+    "build:electron": "electron-builder",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "postinstall": "echo 'Run npm run setup to install all packages'",
+    "setup": "cd packages/shared && npm install && cd ../db && npm install && cd ../background && npm install && cd ../../apps/desktop && npm install && cd ../renderer && npm install",
+    "dev:simple": "cd apps/renderer && npm run dev"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
+    "concurrently": "^8.2.2",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "eslint": "^8.50.0",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.6",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.statuz.app",
+    "productName": "Statuz",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "author": "Statuz Team",
+  "license": "MIT"
+}

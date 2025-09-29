@@ -1,0 +1,182 @@
+[
+  {
+    "id": "msg_001",
+    "groupId": "group_sap_implementation",
+    "author": "1234567890@c.us",
+    "authorName": "John Smith",
+    "timestamp": 1727702400000,
+    "text": "Update on MTO Strategy 50: We've completed the variant configuration setup and tested the first scenarios. About 70% complete now. Still working on the pricing integration with RAR module. Target completion by October 30th looks achievable.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_002",
+    "groupId": "group_sap_implementation",
+    "author": "2345678901@c.us",
+    "authorName": "Sarah Johnson",
+    "timestamp": 1727788800000,
+    "text": "RAR setup is progressing well. Revenue recognition rules are defined and we're now working on the reporting dashboards. However, we have a dependency on the FI/CO integration being completed first. @Michael can you confirm the G/L account setup timeline?",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_003",
+    "groupId": "group_sap_implementation",
+    "author": "3456789012@c.us",
+    "authorName": "Michael Chen",
+    "timestamp": 1727875200000,
+    "text": "FI/CO integration is done! Chart of accounts configured, all cost centers defined. We completed testing yesterday and everything looks good. Sarah, you can proceed with RAR integration now.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_004",
+    "groupId": "group_sap_implementation",
+    "author": "4567890123@c.us",
+    "authorName": "Lisa Rodriguez",
+    "timestamp": 1727961600000,
+    "text": "Data migration phase 1 is at risk! We found some data quality issues with the customer master data. About 15% of records have incomplete addresses. This could delay our November 1st deadline. Need to decide: clean the data or go live with incomplete records and fix later?",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_005",
+    "groupId": "group_sap_implementation",
+    "author": "5678901234@c.us",
+    "authorName": "David Kumar",
+    "timestamp": 1728048000000,
+    "text": "MIGO workflows are coming along nicely. All movement types configured and tested. Integration with WM module verified. Should be completed by October 25th as planned. No blockers currently.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_006",
+    "groupId": "group_sap_implementation",
+    "author": "6789012345@c.us",
+    "authorName": "Amanda Wilson",
+    "timestamp": 1728134400000,
+    "text": "CK11N costing runs are failing! There's an issue with the material BOMs - some cost elements are not properly mapped. This is blocking our cost rollup testing. @David, can you check if this is related to the MIGO setup?",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_007",
+    "groupId": "group_sap_implementation",
+    "author": "1234567890@c.us",
+    "authorName": "John Smith",
+    "timestamp": 1728220800000,
+    "text": "Team meeting tomorrow at 10 AM to discuss the data quality issues. We need to make a decision on the customer master data cleanup. Also need to resolve the CK11N costing problem ASAP.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_008",
+    "groupId": "group_sap_implementation",
+    "author": "7890123456@c.us",
+    "authorName": "Robert Lee",
+    "timestamp": 1728307200000,
+    "text": "Security roles and authorization matrix is 80% complete. All user roles defined and most authorization objects configured. Working on segregation of duties checks now. On track for November 20th delivery.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_009",
+    "groupId": "group_sap_implementation",
+    "author": "8901234567@c.us",
+    "authorName": "Jennifer Park",
+    "timestamp": 1728393600000,
+    "text": "External interfaces development is progressing. CRM interface is functional, legacy system integration is 90% complete. However, the third-party application interface is blocked - waiting for API documentation from the vendor. This might impact our December 1st timeline.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_010",
+    "groupId": "group_sap_implementation",
+    "author": "9012345678@c.us",
+    "authorName": "Kevin Thompson",
+    "timestamp": 1728480000000,
+    "text": "User training materials are ready! We've completed training documentation for all modules. First training session scheduled for next week. Expecting 250+ users to be trained by December 15th. Let's make sure the system is stable for training.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_011",
+    "groupId": "group_sap_implementation",
+    "author": "4567890123@c.us",
+    "authorName": "Lisa Rodriguez",
+    "timestamp": 1728566400000,
+    "text": "UPDATE: We've decided to proceed with data cleanup. Bringing in additional resources to clean the customer master data. This will delay phase 1 migration by one week, new target date is November 8th.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_012",
+    "groupId": "group_sap_implementation",
+    "author": "6789012345@c.us",
+    "authorName": "Amanda Wilson",
+    "timestamp": 1728652800000,
+    "text": "RESOLVED: CK11N costing issue fixed! The problem was with the cost element mapping in the material master. David helped identify the root cause. Cost rollups are now running successfully. Back on track for November 10th completion.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_013",
+    "groupId": "group_sap_implementation",
+    "author": "0123456789@c.us",
+    "authorName": "Michelle Davis",
+    "timestamp": 1728739200000,
+    "text": "Go-live preparation is starting next week. Cutover plan is 95% complete, just finalizing the rollback procedures. System performance testing scheduled for next Friday. Everything looks good for December 28th go-live.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_014",
+    "groupId": "group_sap_implementation",
+    "author": "2345678901@c.us",
+    "authorName": "Sarah Johnson",
+    "timestamp": 1728825600000,
+    "text": "RAR module integration with FI/CO is complete! Revenue recognition rules are working perfectly with the G/L posting. Reporting dashboards are operational. We're ahead of schedule - completing by November 10th instead of November 15th.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_015",
+    "groupId": "group_sap_implementation",
+    "author": "1234567890@c.us",
+    "authorName": "John Smith",
+    "timestamp": 1728912000000,
+    "text": "Great progress everyone! MTO Strategy 50 is now 85% complete. Pricing integration with RAR is working well. Final testing next week. Still confident about October 30th completion.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_016",
+    "groupId": "group_daily_standup",
+    "author": "1234567890@c.us",
+    "authorName": "John Smith",
+    "timestamp": 1728998400000,
+    "text": "Daily standup update: Yesterday completed variant configuration testing for MTO. Today working on pricing interface. No blockers. On track for monthly milestone.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_017",
+    "groupId": "group_daily_standup",
+    "author": "5678901234@c.us",
+    "authorName": "David Kumar",
+    "timestamp": 1729084800000,
+    "text": "MIGO testing completed successfully. All goods movement scenarios validated. Integration with warehouse management confirmed. Next: supporting Amanda with costing issues.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_018",
+    "groupId": "group_daily_standup",
+    "author": "8901234567@c.us",
+    "authorName": "Jennifer Park",
+    "timestamp": 1729171200000,
+    "text": "URGENT: Third-party vendor finally provided API documentation. However, it's different from what we expected. This will require rework of our interface. Estimated 2 weeks additional effort. Risk to December 1st deadline.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_019",
+    "groupId": "group_daily_standup",
+    "author": "7890123456@c.us",
+    "authorName": "Robert Lee",
+    "timestamp": 1729257600000,
+    "text": "Security authorization testing identified a critical issue: segregation of duties conflict in the procurement process. Users can create AND approve purchase orders. Need to redesign roles urgently.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  },
+  {
+    "id": "msg_020",
+    "groupId": "group_daily_standup",
+    "author": "9012345678@c.us",
+    "authorName": "Kevin Thompson",
+    "timestamp": 1729344000000,
+    "text": "First user training session completed! 25 users trained on FI/CO module. Feedback is positive. Users are adapting well to the new interface. Next session tomorrow for MM module.",
+    "raw": "{\"type\":\"chat\",\"hasMedia\":false}"
+  }
+]

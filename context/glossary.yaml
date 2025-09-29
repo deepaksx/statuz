@@ -1,0 +1,74 @@
+# SAP S/4HANA Project Glossary
+# Common terms and abbreviations used in the project
+
+# Transaction Codes
+MIGO: "Goods Movement - transaction for recording receipt, issue, and transfer of materials"
+CK11N: "Cost Estimate with Quantity Structure - standard costing transaction"
+FB01: "Post Document - general ledger posting transaction"
+ME21N: "Create Purchase Order - procurement transaction"
+VA01: "Create Sales Order - sales document creation"
+VF01: "Create Billing Document - invoice creation"
+COGI: "Goods Issue for Production Order"
+MB51: "Material Document List - goods movement history"
+
+# Modules and Components
+FI: "Financial Accounting - core finance module"
+CO: "Controlling - management accounting and cost control"
+MM: "Materials Management - procurement and inventory"
+SD: "Sales and Distribution - order-to-cash processes"
+PP: "Production Planning - manufacturing execution"
+WM: "Warehouse Management - inventory location management"
+QM: "Quality Management - quality control processes"
+PM: "Plant Maintenance - asset management"
+
+# Business Processes
+RAR: "Revenue Accounting and Reporting - subscription billing and revenue recognition"
+MTO: "Make-to-Order - production strategy for customer-specific products"
+ATO: "Assemble-to-Order - assembly of standard components per order"
+MTS: "Make-to-Stock - production for inventory"
+O2C: "Order-to-Cash - complete sales process flow"
+P2P: "Procure-to-Pay - complete procurement process flow"
+R2R: "Record-to-Report - financial close and reporting process"
+
+# Technical Terms
+"G/L": "General Ledger - main accounting records"
+"A/P": "Accounts Payable - vendor payments"
+"A/R": "Accounts Receivable - customer collections"
+RFC: "Remote Function Call - SAP integration protocol"
+BAPI: "Business Application Programming Interface"
+IDOC: "Intermediate Document - data exchange format"
+ABAP: "Advanced Business Application Programming - SAP programming language"
+HANA: "High-Performance Analytic Appliance - SAP database platform"
+
+# Organizational Units
+"Company Code": "Legal entity for financial reporting"
+"Plant": "Physical location for production or storage"
+"Storage Location": "Subdivision of plant for material storage"
+"Cost Center": "Organizational unit for cost collection"
+"Profit Center": "Organizational unit for profit analysis"
+"Sales Organization": "Unit responsible for sales activities"
+"Distribution Channel": "Path products take to reach customers"
+
+# Master Data
+"Material Master": "Central source of material information"
+"Customer Master": "Central customer data repository"
+"Vendor Master": "Central supplier data repository"
+"BOM": "Bill of Materials - product structure definition"
+"Routing": "Sequence of operations for production"
+"Work Center": "Location where operations are performed"
+
+# Financial Terms
+"Cost Element": "Classification of costs in controlling"
+"Internal Order": "Tool for collecting costs for specific purposes"
+"WBS": "Work Breakdown Structure - project management tool"
+"Settlement": "Allocation of costs from orders to cost objects"
+"Variance": "Difference between planned and actual costs"
+"Period End Closing": "Monthly financial close activities"
+
+# Specialized Processes
+"Variant Configuration": "Customer-specific product configuration"
+"Batch Management": "Tracking of material lots"
+"Serial Numbers": "Unique identification of individual items"
+"Consignment": "Vendor-owned inventory at customer location"
+"Subcontracting": "External processing of materials"
+"Drop Shipment": "Direct delivery from vendor to customer"
