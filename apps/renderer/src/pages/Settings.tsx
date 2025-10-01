@@ -70,6 +70,7 @@ export function Settings() {
       console.log('statuz_llmProvider:', localStorage.getItem('statuz_llmProvider'));
 
       // Try to save to backend config, but don't rely on it for form state
+      let databaseSaved = false;
       try {
         const savedConfig = await updateConfig({
           llmProvider: formData.llmProvider,
@@ -77,11 +78,16 @@ export function Settings() {
           ...(formData.geminiApiKey && { geminiApiKey: formData.geminiApiKey })
         });
         console.log('Successfully saved to backend config:', savedConfig);
+        databaseSaved = true;
       } catch (configError) {
         console.log('Backend config save failed (using localStorage only):', configError);
       }
 
-      toast.success('Settings saved successfully');
+      if (databaseSaved) {
+        toast.success('Settings saved successfully! API key stored in database for auto-response feature.');
+      } else {
+        toast.success('Settings saved to browser storage. Note: Database save failed - auto-response may not work until app restart.');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Failed to save settings');

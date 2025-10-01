@@ -12,6 +12,8 @@ export interface Group {
   historyUploadedAt?: number;
   context?: string;
   contextUpdatedAt?: number;
+  autoResponseEnabled?: boolean;
+  autoResponseTrigger?: string;
 }
 
 export interface Message {
@@ -113,6 +115,8 @@ export interface AppConfig {
   apiKey?: string;
   geminiApiKey?: string;
   dataDirectory: string;
+  autoResponseEnabled?: boolean;
+  autoResponseTrigger?: string;
 }
 
 export interface IpcMessage<T = any> {

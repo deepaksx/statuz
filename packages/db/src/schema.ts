@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS groups (
   name TEXT NOT NULL,
   is_watched INTEGER NOT NULL DEFAULT 0,
   has_history_uploaded INTEGER NOT NULL DEFAULT 0,
-  history_uploaded_at INTEGER
+  history_uploaded_at INTEGER,
+  auto_response_enabled INTEGER NOT NULL DEFAULT 0,
+  auto_response_trigger TEXT DEFAULT 'NXSYS_AI'
 );
 
 -- Messages table

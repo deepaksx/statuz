@@ -29,7 +29,8 @@ export function Groups() {
     getMessages,
     config,
     chatWithAI,
-    sendMessage
+    sendMessage,
+    invoke
   } = useApp();
 
   const [searchParams] = useSearchParams();
@@ -261,6 +262,17 @@ export function Groups() {
     console.log('config geminiApiKey:', config?.geminiApiKey);
     console.log('Final savedGeminiApiKey:', savedGeminiApiKey);
     setGeminiApiKey(savedGeminiApiKey);
+  };
+
+  const handleToggleAutoResponse = async (groupId: string, currentlyEnabled: boolean) => {
+    try {
+      const newStatus = !currentlyEnabled;
+      await invoke('update-group-auto-response', { groupId, enabled: newStatus, trigger: 'NXSYS_AI' });
+      toast.success(newStatus ? 'Auto-response enabled' : 'Auto-response disabled');
+    } catch (error) {
+      console.error('Failed to toggle auto-response:', error);
+      toast.error('Failed to update auto-response');
+    }
   };
 
   const handleSendQuestion = async () => {
@@ -739,6 +751,23 @@ export function Groups() {
                       >
                         <Bot className="h-4 w-4 mr-1" />
                         AI Chat
+                      </button>
+                    )}
+
+                    {group.isWatched && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleAutoResponse(group.id, group.autoResponseEnabled || false);
+                        }}
+                        className={clsx(
+                          'btn btn-sm',
+                          group.autoResponseEnabled ? 'btn-success' : 'btn-secondary'
+                        )}
+                        title={group.autoResponseEnabled ? 'Auto-response enabled' : 'Enable auto-response'}
+                      >
+                        <Cpu className="h-4 w-4 mr-1" />
+                        Auto-AI
                       </button>
                     )}
 

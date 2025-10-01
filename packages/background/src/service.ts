@@ -297,9 +297,77 @@ export class BackgroundService extends EventEmitter {
 
       console.log(`✅ Message stored and emitting messageProcessed event`);
       this.emit('messageProcessed', message);
+
+      // Check for auto-response trigger
+      await this.checkAndRespondToMessage(message, group);
     } catch (error) {
       console.error('Failed to process message:', error);
       this.emit('error', error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  private async checkAndRespondToMessage(message: Message, group: Group) {
+    try {
+      console.log(`🔍 Checking auto-response for group: ${group.name}, enabled: ${group.autoResponseEnabled}`);
+
+      // Check if auto-response is enabled for this group
+      if (!group.autoResponseEnabled) {
+        console.log(`⏭️  Auto-response not enabled for group: ${group.name}`);
+        return;
+      }
+
+      // Check if message contains trigger keyword
+      const trigger = group.autoResponseTrigger || 'NXSYS_AI';
+      const messageText = message.text.trim();
+
+      console.log(`🔍 Checking message for trigger "${trigger}": "${messageText}"`);
+
+      if (!messageText.toUpperCase().includes(trigger.toUpperCase())) {
+        console.log(`⏭️  Message does not contain trigger: "${trigger}"`);
+        return;
+      }
+
+      console.log(`🤖 Auto-response triggered in group: ${group.name}`);
+
+      // Extract question after trigger
+      const triggerIndex = messageText.toUpperCase().indexOf(trigger.toUpperCase());
+      const question = messageText.substring(triggerIndex + trigger.length).trim();
+
+      if (!question) {
+        console.log(`⚠️  No question found after trigger`);
+        return;
+      }
+
+      // Check if we have API key configured
+      if (!this.config.geminiApiKey && !this.aiService.hasApiKey()) {
+        console.log(`⚠️  Auto-response skipped: No API key configured`);
+        return;
+      }
+
+      console.log(`🔍 Processing auto-response question: "${question}"`);
+
+      // Get AI response directly without context
+      console.log(`🤖 Getting direct AI answer for question`);
+      const answer = await this.getDirectAIAnswer(question, this.config.geminiApiKey);
+      console.log(`✅ Got AI response: ${answer.substring(0, 50)}...`);
+
+      // Get author name for @mention
+      const authorName = message.authorName || message.author;
+      console.log(`👤 Author for mention: ${authorName}`);
+
+      // Format response with @mention
+      const responseMessage = `@${authorName} ${answer}`;
+
+      // Send response to group
+      console.log(`📤 Sending auto-response to group: ${group.name}`);
+      await this.sendMessage(group.id, responseMessage);
+      console.log(`✅ Auto-response sent successfully!`);
+
+      this.db.auditLog('AUTO_RESPONSE', `Responded to ${authorName} in ${group.name}`);
+    } catch (error) {
+      console.error('❌ Failed to auto-respond:', error);
+      console.error('Error details:', error instanceof Error ? error.stack : error);
+      // Don't throw - just log the error
     }
   }
 
@@ -315,6 +383,15 @@ export class BackgroundService extends EventEmitter {
 
   async updateGroupWatchStatus(groupId: string, isWatched: boolean): Promise<boolean> {
     const success = await this.db.updateGroupWatchStatus(groupId, isWatched);
+    if (success) {
+      const groups = await this.db.getGroups();
+      this.emit('groupsUpdated', groups);
+    }
+    return success;
+  }
+
+  async updateGroupAutoResponse(groupId: string, enabled: boolean, trigger?: string): Promise<boolean> {
+    const success = await this.db.updateGroupAutoResponse(groupId, enabled, trigger);
     if (success) {
       const groups = await this.db.getGroups();
       this.emit('groupsUpdated', groups);
@@ -563,5 +640,21 @@ export class BackgroundService extends EventEmitter {
 
   async getAuthorsFromWatchedGroups() {
     return await this.db.getAuthorsFromWatchedGroups();
+  }
+
+  private async getDirectAIAnswer(question: string, apiKey?: string): Promise<string> {
+    try {
+      // Use the AI service to get a direct answer without context
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKey || this.config.geminiApiKey || '');
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+
+      const result = await model.generateContent(question);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Failed to get direct AI answer:', error);
+      throw error;
+    }
   }
 }

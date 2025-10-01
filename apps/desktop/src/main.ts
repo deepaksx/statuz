@@ -15,6 +15,23 @@ class StatuzApp {
     this.setupApp();
   }
 
+  private async saveConfigToDatabase(key: string, value: string): Promise<void> {
+    // Import StatuzDatabase class from @statuz/db
+    const { StatuzDatabase } = await import('@statuz/db');
+    const dbPath = join(this.config.dataDirectory, 'statuz.db');
+    const db = new StatuzDatabase(dbPath);
+
+    try {
+      await db.setConfig(key, value);
+      console.log(`✅ Saved ${key} to database`);
+    } catch (error) {
+      console.error('Failed to save config to database:', error);
+      throw error;
+    } finally {
+      db.close();
+    }
+  }
+
   private loadConfig(): AppConfig {
     const userDataPath = app.getPath('userData');
     const dataDirectory = join(userDataPath, 'data');
@@ -31,12 +48,41 @@ class StatuzApp {
     };
   }
 
+  private async loadApiKeyAsync(dataDirectory: string) {
+    try {
+      const { StatuzDatabase } = await import('@statuz/db');
+      const dbPath = join(dataDirectory, 'statuz.db');
+      const db = new StatuzDatabase(dbPath);
+      const geminiApiKey = await db.getConfig('geminiApiKey');
+      db.close();
+
+      if (geminiApiKey) {
+        console.log('✅ Loaded Gemini API key from database');
+        this.config.geminiApiKey = geminiApiKey;
+        this.config.llmProvider = 'gemini';
+        // Update background service with the API key
+        if (this.backgroundService) {
+          this.backgroundService.setGeminiApiKey(geminiApiKey);
+        }
+      } else {
+        console.log('⚠️  No Gemini API key found in database');
+      }
+    } catch (error) {
+      console.warn('Failed to load config from database:', error);
+    }
+  }
+
   private setupApp() {
     // Handle app ready
-    app.whenReady().then(() => {
+    app.whenReady().then(async () => {
       console.log('🚀 Electron app ready!');
       this.createWindow();
       this.setupIpcHandlers();
+
+      // Load API key before starting background service
+      console.log('🔑 Loading API key from database...');
+      await this.loadApiKeyAsync(this.config.dataDirectory);
+
       console.log('⚙️  Initializing background service...');
       this.initializeBackgroundService().catch((err) => {
         console.error('❌ Background service failed:', err);
@@ -193,6 +239,10 @@ class StatuzApp {
         const { groupId, isWatched } = message.payload;
         return await this.backgroundService.updateGroupWatchStatus(groupId, isWatched);
 
+      case 'update-group-auto-response':
+        const { groupId: arGroupId, enabled, trigger } = message.payload;
+        return await this.backgroundService.updateGroupAutoResponse(arGroupId, enabled, trigger);
+
       case 'refresh-groups':
         return await this.backgroundService.refreshGroups();
 
@@ -256,6 +306,8 @@ class StatuzApp {
         const { apiKey: geminiKey } = message.payload;
         this.backgroundService.setGeminiApiKey(geminiKey);
         this.config.geminiApiKey = geminiKey;
+        // Persist to database
+        await this.saveConfigToDatabase('geminiApiKey', geminiKey);
         return { success: true };
 
       case 'send-message':
@@ -287,6 +339,14 @@ class StatuzApp {
 
       case 'update-config':
         this.config = { ...this.config, ...message.payload };
+        // Save geminiApiKey to database if provided
+        if (message.payload.geminiApiKey) {
+          await this.saveConfigToDatabase('geminiApiKey', message.payload.geminiApiKey);
+          // Also update background service
+          if (this.backgroundService) {
+            this.backgroundService.setGeminiApiKey(message.payload.geminiApiKey);
+          }
+        }
         return this.config;
 
       case 'restart-service':

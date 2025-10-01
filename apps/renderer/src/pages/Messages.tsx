@@ -12,7 +12,8 @@ interface GroupMessages {
 
 export function Messages() {
   const {
-    groups
+    groups,
+    getMessages
   } = useApp();
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -28,11 +29,14 @@ export function Messages() {
 
   // Load message previews for watched groups on mount
   useEffect(() => {
-    if (watchedGroups.length > 0) {
-      watchedGroups.forEach(async (group) => {
+    const loadPreviews = async () => {
+      console.log('Loading message previews for', watchedGroups.length, 'watched groups');
+
+      for (const group of watchedGroups) {
         try {
-          const messagesResponse = await fetch(`http://localhost:3001/api/messages?groupId=${group.id}&limit=1&offset=0`);
-          const messages = await messagesResponse.json();
+          console.log('Fetching messages for group:', group.name);
+          const messages = await getMessages(group.id, undefined, 1);
+          console.log('Got', messages.length, 'messages for', group.name);
 
           if (messages.length > 0) {
             setGroupMessages(prev => ({
@@ -48,13 +52,16 @@ export function Messages() {
         } catch (error) {
           console.error(`Failed to load preview for group ${group.id}:`, error);
         }
-      });
+      }
+    };
+
+    if (watchedGroups.length > 0) {
+      loadPreviews();
     }
-  }, []); // Empty dependency array - only run once on mount
+  }, [groups]); // Re-run when groups change
 
   const loadGroupMessages = async (groupId: string, page: number = 0) => {
     const limit = 10000;
-    const offset = page * limit;
 
     setGroupMessages(prev => ({
       ...prev,
@@ -66,17 +73,13 @@ export function Messages() {
     }));
 
     try {
-      const messagesResponse = await fetch(`http://localhost:3001/api/messages?groupId=${groupId}&limit=${limit}&offset=${offset}`);
-      const messages = await messagesResponse.json();
-
-      const countResponse = await fetch(`http://localhost:3001/api/messages/count?groupId=${groupId}`);
-      const countData = await countResponse.json();
-      const totalMessages = countData.count;
+      const messages = await getMessages(groupId, undefined, limit);
+      const totalMessages = messages.length;
 
       setGroupMessages(prev => ({
         ...prev,
         [groupId]: {
-          messages: page === 0 ? messages : [...(prev[groupId]?.messages || []), ...messages],
+          messages: messages,
           totalMessages,
           currentPage: page,
           isLoading: false

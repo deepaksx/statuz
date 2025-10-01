@@ -48,6 +48,23 @@ export class StatuzDatabase {
         console.error('Migration error (history_uploaded_at):', err);
       }
     });
+
+    // Add auto-response columns
+    this.db.run(`
+      ALTER TABLE groups ADD COLUMN auto_response_enabled INTEGER NOT NULL DEFAULT 0
+    `, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Migration error (auto_response_enabled):', err);
+      }
+    });
+
+    this.db.run(`
+      ALTER TABLE groups ADD COLUMN auto_response_trigger TEXT DEFAULT 'NXSYS_AI'
+    `, (err) => {
+      if (err && !err.message.includes('duplicate column')) {
+        console.error('Migration error (auto_response_trigger):', err);
+      }
+    });
   }
 
   close() {
@@ -61,10 +78,15 @@ export class StatuzDatabase {
     return new Promise((resolve, reject) => {
       this.db.all(`SELECT id, name, is_watched as isWatched,
                    has_history_uploaded as hasHistoryUploaded,
-                   history_uploaded_at as historyUploadedAt
+                   history_uploaded_at as historyUploadedAt,
+                   auto_response_enabled as autoResponseEnabled,
+                   auto_response_trigger as autoResponseTrigger
                    FROM groups ORDER BY name`, (err, rows: any[]) => {
         if (err) reject(err);
-        else resolve(rows as Group[]);
+        else resolve(rows.map(r => ({
+          ...r,
+          autoResponseEnabled: r.autoResponseEnabled === 1
+        })) as Group[]);
       });
     });
   }
@@ -73,10 +95,15 @@ export class StatuzDatabase {
     return new Promise((resolve, reject) => {
       this.db.all(`SELECT id, name, is_watched as isWatched,
                    has_history_uploaded as hasHistoryUploaded,
-                   history_uploaded_at as historyUploadedAt
+                   history_uploaded_at as historyUploadedAt,
+                   auto_response_enabled as autoResponseEnabled,
+                   auto_response_trigger as autoResponseTrigger
                    FROM groups WHERE is_watched = 1 ORDER BY name`, (err, rows: any[]) => {
         if (err) reject(err);
-        else resolve(rows as Group[]);
+        else resolve(rows.map(r => ({
+          ...r,
+          autoResponseEnabled: r.autoResponseEnabled === 1
+        })) as Group[]);
       });
     });
   }
@@ -130,6 +157,19 @@ export class StatuzDatabase {
     return new Promise((resolve, reject) => {
       this.db.run('UPDATE groups SET has_history_uploaded = ?, history_uploaded_at = ? WHERE id = ?',
         [hasHistory ? 1 : 0, Date.now(), groupId],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this.changes > 0);
+        }
+      );
+    });
+  }
+
+  updateGroupAutoResponse(groupId: string, enabled: boolean, trigger?: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const triggerValue = trigger || 'NXSYS_AI';
+      this.db.run('UPDATE groups SET auto_response_enabled = ?, auto_response_trigger = ? WHERE id = ?',
+        [enabled ? 1 : 0, triggerValue, groupId],
         function(err) {
           if (err) reject(err);
           else resolve(this.changes > 0);
