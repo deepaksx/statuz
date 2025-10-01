@@ -141,7 +141,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Footer */}
           <div className="p-4 border-t">
             <div className="text-xs text-gray-500">
-              Statuz v1.0.0
+              Statuz v2.1.0
             </div>
           </div>
         </div>

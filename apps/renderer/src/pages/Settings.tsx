@@ -340,7 +340,7 @@ export function Settings() {
       {/* App Info */}
       <div className="card border-gray-200 bg-gray-50">
         <div className="text-center">
-          <div className="font-semibold text-gray-900 mb-2">Statuz v1.0.0</div>
+          <div className="font-semibold text-gray-900 mb-2">Statuz v2.1.0</div>
           <div className="text-sm text-gray-600">
             WhatsApp Project Monitor - Built with Electron, React, and TypeScript
           </div>
