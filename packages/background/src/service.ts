@@ -37,6 +37,8 @@ export class BackgroundService extends EventEmitter {
   private contextChecksum = '';
   private whatsappServiceProcess: ChildProcess | null = null;
   private whatsappServicePort = 3002;
+  private contactsCache: Map<string, { alias: string; role?: string }> | null = null;
+  private contactsCacheTime = 0;
 
   constructor(config: AppConfig) {
     super();
@@ -489,17 +491,28 @@ export class BackgroundService extends EventEmitter {
       throw new Error('AI service not configured. Please provide a Gemini API key in settings.');
     }
 
-    // Get group messages
-    const messages = await this.db.getMessages(groupId, undefined, 100);
+    // Get group messages - reduced to 30 for faster response
+    const messages = await this.db.getMessages(groupId, undefined, 30);
 
     // Get group context
     const contextData = await this.db.getGroupContext(groupId);
+
+    // Get contacts with caching (5 minute cache)
+    const now = Date.now();
+    if (!this.contactsCache || now - this.contactsCacheTime > 300000) {
+      const contacts = await this.db.getContacts();
+      this.contactsCache = new Map(
+        contacts.map(c => [c.phoneNumber, { alias: c.alias, role: c.role }])
+      );
+      this.contactsCacheTime = now;
+    }
 
     return await this.aiService.chat({
       question,
       context: contextData.context,
       groupMessages: messages,
-      apiKey
+      apiKey,
+      contacts: this.contactsCache
     });
   }
 
@@ -525,5 +538,30 @@ export class BackgroundService extends EventEmitter {
 
     this.db.auditLog('MESSAGE_SENT', `Sent message to group ${groupId}: ${message.substring(0, 50)}...`);
     return await this.whatsappClient.sendMessage(groupId, message);
+  }
+
+  // Contacts Management
+  async getContacts() {
+    return await this.db.getContacts();
+  }
+
+  async getContact(phoneNumber: string) {
+    return await this.db.getContact(phoneNumber);
+  }
+
+  async upsertContact(contact: { phoneNumber: string; alias: string; role?: string; notes?: string }) {
+    // Invalidate cache when contacts are modified
+    this.contactsCache = null;
+    return await this.db.upsertContact(contact);
+  }
+
+  async deleteContact(phoneNumber: string) {
+    // Invalidate cache when contacts are modified
+    this.contactsCache = null;
+    return await this.db.deleteContact(phoneNumber);
+  }
+
+  async getAuthorsFromWatchedGroups() {
+    return await this.db.getAuthorsFromWatchedGroups();
   }
 }

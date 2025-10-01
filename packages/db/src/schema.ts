@@ -53,13 +53,25 @@ CREATE TABLE IF NOT EXISTS group_context (
   context TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+
+-- Contacts table (central contact management)
+CREATE TABLE IF NOT EXISTS contacts (
+  phone_number TEXT PRIMARY KEY,
+  alias TEXT NOT NULL,
+  role TEXT,
+  notes TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `;
 
 export const CREATE_INDEXES = `
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_messages_group_id ON messages(group_id);
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
+CREATE INDEX IF NOT EXISTS idx_messages_author ON messages(author);
 CREATE INDEX IF NOT EXISTS idx_milestones_status ON milestones(status);
 CREATE INDEX IF NOT EXISTS idx_milestones_due_date ON milestones(due_date);
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts);
+CREATE INDEX IF NOT EXISTS idx_contacts_alias ON contacts(alias);
 `;

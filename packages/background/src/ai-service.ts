@@ -11,6 +11,7 @@ export interface AIChatRequest {
   context?: string;
   groupMessages?: Message[];
   apiKey?: string;
+  contacts?: Map<string, { alias: string; role?: string }>;
 }
 
 export interface AIChatResponse {
@@ -49,11 +50,22 @@ export class AIService {
     let contextText = '';
     if (request.groupMessages && request.groupMessages.length > 0) {
       contextText = '\n\nRecent group messages:\n';
-      // Only include last 50 messages to avoid token limits
-      const recentMessages = request.groupMessages.slice(-50);
-      for (const msg of recentMessages) {
+      // Use all provided messages (already limited by caller)
+      for (const msg of request.groupMessages) {
         const date = new Date(msg.timestamp).toLocaleString();
-        contextText += `[${date}] ${msg.authorName || msg.author}: ${msg.text}\n`;
+
+        // Use alias from contacts if available
+        let displayName = msg.authorName || msg.author;
+        let roleInfo = '';
+        if (request.contacts) {
+          const contact = request.contacts.get(msg.author);
+          if (contact) {
+            displayName = contact.alias;
+            roleInfo = contact.role ? ` (${contact.role})` : '';
+          }
+        }
+
+        contextText += `[${date}] ${displayName}${roleInfo}: ${msg.text}\n`;
       }
     }
 

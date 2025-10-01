@@ -49,6 +49,7 @@ interface AppContextType {
   testAIConnection: (apiKey?: string) => Promise<boolean>;
   setGeminiApiKey: (apiKey: string) => Promise<void>;
   sendMessage: (groupId: string, message: string) => Promise<boolean>;
+  invoke: (type: string, payload?: any) => Promise<any>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -497,7 +498,8 @@ export function AppProvider({ children }: AppProviderProps) {
     chatWithAI,
     testAIConnection,
     setGeminiApiKey,
-    sendMessage
+    sendMessage,
+    invoke
   };
 
   return (

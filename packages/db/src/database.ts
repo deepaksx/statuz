@@ -329,6 +329,92 @@ export class StatuzDatabase {
     return this.setConfig('last_snapshot_time', timestamp.toString());
   }
 
+  // Contacts Management
+  getContacts(): Promise<Array<{ phoneNumber: string; alias: string; role?: string; notes?: string; createdAt: number; updatedAt: number }>> {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT phone_number as phoneNumber, alias, role, notes, created_at as createdAt, updated_at as updatedAt FROM contacts ORDER BY alias ASC',
+        (err, rows: any[]) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+  }
+
+  getContact(phoneNumber: string): Promise<{ phoneNumber: string; alias: string; role?: string; notes?: string; createdAt: number; updatedAt: number } | null> {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT phone_number as phoneNumber, alias, role, notes, created_at as createdAt, updated_at as updatedAt FROM contacts WHERE phone_number = ?',
+        [phoneNumber],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row || null);
+        }
+      );
+    });
+  }
+
+  upsertContact(contact: { phoneNumber: string; alias: string; role?: string; notes?: string }): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const now = Date.now();
+      this.db.run(
+        `INSERT INTO contacts (phone_number, alias, role, notes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(phone_number) DO UPDATE SET
+           alias = excluded.alias,
+           role = excluded.role,
+           notes = excluded.notes,
+           updated_at = excluded.updated_at`,
+        [contact.phoneNumber, contact.alias, contact.role || null, contact.notes || null, now, now],
+        (err) => {
+          if (err) reject(err);
+          else {
+            this.auditLog('CONTACT_UPSERT', `Contact ${contact.alias} (${contact.phoneNumber}) upserted`);
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
+  deleteContact(phoneNumber: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'DELETE FROM contacts WHERE phone_number = ?',
+        [phoneNumber],
+        (err) => {
+          if (err) reject(err);
+          else {
+            this.auditLog('CONTACT_DELETE', `Contact ${phoneNumber} deleted`);
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
+  // Get all unique authors from watched groups with their contact info
+  getAuthorsFromWatchedGroups(): Promise<Array<{ phoneNumber: string; displayName: string; messageCount: number }>> {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT DISTINCT
+           m.author as phoneNumber,
+           m.author_name as displayName,
+           COUNT(*) as messageCount
+         FROM messages m
+         INNER JOIN groups g ON m.group_id = g.id
+         WHERE g.is_watched = 1
+         GROUP BY m.author
+         ORDER BY COUNT(*) DESC`,
+        (err, rows: any[]) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+  }
+
   // Statistics
   getStats(): Promise<{
     watchedGroups: number;

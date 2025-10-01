@@ -24,6 +24,15 @@ export interface Message {
   raw: string;
 }
 
+export interface Contact {
+  phoneNumber: string;
+  alias: string;
+  role?: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Milestone {
   id: string;
   title: string;

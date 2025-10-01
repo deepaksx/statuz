@@ -6,6 +6,7 @@ import { Messages } from './pages/Messages';
 import { Reports } from './pages/Reports';
 import { Context } from './pages/Context';
 import { Settings } from './pages/Settings';
+import { Contacts } from './pages/Contacts';
 import { AppProvider } from './contexts/AppContext';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/contacts" element={<Contacts />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/context" element={<Context />} />
           <Route path="/settings" element={<Settings />} />

@@ -262,6 +262,26 @@ class StatuzApp {
         const { groupId: sendGroupId, message: messageText } = message.payload;
         return await this.backgroundService.sendMessage(sendGroupId, messageText);
 
+      case 'get-contacts':
+        return await this.backgroundService.getContacts();
+
+      case 'get-contact':
+        const { phoneNumber: getPhoneNumber } = message.payload;
+        return await this.backgroundService.getContact(getPhoneNumber);
+
+      case 'upsert-contact':
+        const { phoneNumber, alias, role, notes } = message.payload;
+        await this.backgroundService.upsertContact({ phoneNumber, alias, role, notes });
+        return { success: true };
+
+      case 'delete-contact':
+        const { phoneNumber: deletePhoneNumber } = message.payload;
+        await this.backgroundService.deleteContact(deletePhoneNumber);
+        return { success: true };
+
+      case 'get-authors-from-watched-groups':
+        return await this.backgroundService.getAuthorsFromWatchedGroups();
+
       case 'get-config':
         return this.config;
 

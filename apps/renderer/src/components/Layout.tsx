@@ -9,7 +9,8 @@ import {
   Wifi,
   WifiOff,
   QrCode,
-  RotateCcw
+  RotateCcw,
+  UserCircle
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import clsx from 'clsx';
@@ -26,6 +27,7 @@ export function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BarChart3 },
     { name: 'Groups', href: '/groups', icon: Users },
+    { name: 'Contacts', href: '/contacts', icon: UserCircle },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
