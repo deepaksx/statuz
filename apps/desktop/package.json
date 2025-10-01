@@ -1,0 +1,18 @@
+{
+  "name": "@aipm/desktop",
+  "version": "2.1.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@aipm/shared": "^1.0.0",
+    "@aipm/background": "^1.0.0",
+    "electron": "^27.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.2"
+  }
+}

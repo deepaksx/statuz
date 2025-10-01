@@ -1,0 +1,32 @@
+{
+  "name": "@aipm/background",
+  "version": "2.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@aipm/db": "^1.0.0",
+    "@aipm/shared": "^1.0.0",
+    "bullmq": "^4.15.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "ioredis": "^5.3.2",
+    "nanoid": "^5.0.3",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.23.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^20.8.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.2.2"
+  }
+}

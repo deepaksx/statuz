@@ -1,0 +1,19 @@
+{
+  "name": "@aipm/db",
+  "version": "2.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@aipm/shared": "^1.0.0",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "@types/sqlite3": "^3.1.11",
+    "typescript": "^5.2.2"
+  }
+}
