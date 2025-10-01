@@ -1,16 +1,13 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { BackgroundService } from '@statuz/background';
-import type { AppConfig, IpcMessage, IpcResponse } from '@statuz/shared';
+import type { AppConfig, IpcMessage, IpcResponse } from '@statuz/shared' with { 'resolution-mode': 'import' };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// __dirname is available in CommonJS
 
 class StatuzApp {
   private mainWindow: BrowserWindow | null = null;
-  private backgroundService: BackgroundService | null = null;
+  private backgroundService: any | null = null;
   private config: AppConfig;
 
   constructor() {
@@ -37,9 +34,13 @@ class StatuzApp {
   private setupApp() {
     // Handle app ready
     app.whenReady().then(() => {
+      console.log('🚀 Electron app ready!');
       this.createWindow();
       this.setupIpcHandlers();
-      this.initializeBackgroundService();
+      console.log('⚙️  Initializing background service...');
+      this.initializeBackgroundService().catch((err) => {
+        console.error('❌ Background service failed:', err);
+      });
     });
 
     // Handle window closed
@@ -64,6 +65,7 @@ class StatuzApp {
   }
 
   private createWindow() {
+    console.log('🪟 Creating Electron window...');
     this.mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -75,20 +77,46 @@ class StatuzApp {
         preload: join(__dirname, 'preload.js')
       },
       titleBarStyle: 'default',
-      show: false
+      show: true,
+      backgroundColor: '#1a1a1a'
     });
 
-    // Load the renderer
-    if (process.env.NODE_ENV === 'development') {
-      this.mainWindow.loadURL('http://localhost:5173');
-      this.mainWindow.webContents.openDevTools();
+    // Check if production build exists
+    // __dirname is dist/main, so ../renderer/index.html is dist/renderer/index.html
+    const prodPath = join(__dirname, '../renderer/index.html');
+    const isDev = process.env.NODE_ENV === 'development' || !existsSync(prodPath);
+
+    console.log(`🔍 Checking production build at: ${prodPath}`);
+    console.log(`📊 Production build exists: ${existsSync(prodPath)}`);
+
+    if (isDev) {
+      console.log('📡 Loading renderer from http://localhost:5173 (Development Mode)');
+      this.mainWindow.loadURL('http://localhost:5173').then(() => {
+        console.log('✅ Window loaded successfully!');
+      }).catch((err) => {
+        console.error('❌ Failed to load window:', err);
+      });
+      // Only open DevTools if NO_DEVTOOLS env var is not set
+      if (!process.env.NO_DEVTOOLS) {
+        this.mainWindow.webContents.openDevTools();
+      } else {
+        console.log('⚡ DevTools disabled for better performance');
+      }
     } else {
-      this.mainWindow.loadFile(join(__dirname, '../renderer/dist/index.html'));
+      console.log('📡 Loading renderer from file (Production Mode)');
+      this.mainWindow.loadFile(prodPath).then(() => {
+        console.log('✅ Window loaded successfully!');
+      }).catch((err) => {
+        console.error('❌ Failed to load window:', err);
+      });
+      // Don't open DevTools in production
     }
 
-    // Show window when ready
+    // Show window when ready (backup, already shown above)
     this.mainWindow.once('ready-to-show', () => {
+      console.log('✅ Window ready to show');
       this.mainWindow?.show();
+      this.mainWindow?.focus();
     });
 
     // Handle window closed
@@ -172,9 +200,13 @@ class StatuzApp {
         const { groupId: msgGroupId, since: msgSince, limit: msgLimit } = message.payload || {};
         return await this.backgroundService.getMessages(msgGroupId, msgSince, msgLimit);
 
-      case 'get-signals':
-        const { kind, since, limit } = message.payload || {};
-        return await this.backgroundService.getSignals(kind, since, limit);
+      case 'get-group-members':
+        const { groupId: membersGroupId } = message.payload;
+        return await this.backgroundService.getGroupMembers(membersGroupId);
+
+      case 'upload-chat-history':
+        const { groupId: uploadGroupId, content } = message.payload;
+        return await this.backgroundService.uploadChatHistory(uploadGroupId, content);
 
       case 'get-milestones':
         return await this.backgroundService.getMilestones();
@@ -193,6 +225,42 @@ class StatuzApp {
       case 'get-audit-logs':
         const { limit: auditLimit } = message.payload || {};
         return this.backgroundService.getAuditLogs(auditLimit);
+
+      case 'get-group-context':
+        const { groupId: contextGroupId } = message.payload;
+        return await this.backgroundService.getGroupContext(contextGroupId);
+
+      case 'update-group-context':
+        const { groupId: updateContextGroupId, context } = message.payload;
+        await this.backgroundService.updateGroupContext(updateContextGroupId, context);
+        return { success: true };
+
+      case 'delete-group-context':
+        const { groupId: deleteContextGroupId } = message.payload;
+        await this.backgroundService.deleteGroupContext(deleteContextGroupId);
+        return { success: true };
+
+      case 'generate-group-report':
+        const { groupId: reportGroupId, timeframe } = message.payload;
+        return await this.backgroundService.generateGroupReport(reportGroupId, timeframe);
+
+      case 'ai-chat':
+        const { groupId: aiGroupId, question, apiKey } = message.payload;
+        return await this.backgroundService.chatWithAI(aiGroupId, question, apiKey);
+
+      case 'test-ai-connection':
+        const { apiKey: testApiKey } = message.payload || {};
+        return await this.backgroundService.testAIConnection(testApiKey);
+
+      case 'set-gemini-api-key':
+        const { apiKey: geminiKey } = message.payload;
+        this.backgroundService.setGeminiApiKey(geminiKey);
+        this.config.geminiApiKey = geminiKey;
+        return { success: true };
+
+      case 'send-message':
+        const { groupId: sendGroupId, message: messageText } = message.payload;
+        return await this.backgroundService.sendMessage(sendGroupId, messageText);
 
       case 'get-config':
         return this.config;
@@ -216,31 +284,38 @@ class StatuzApp {
       await this.backgroundService.stop();
     }
 
+    // Use dynamic import for ES module
+    const { BackgroundService } = await import('@statuz/background');
     this.backgroundService = new BackgroundService(this.config);
 
     // Forward events to renderer
-    this.backgroundService.on('connectionStateChanged', (state) => {
+    this.backgroundService.on('connectionStateChanged', (state: any) => {
       this.sendToRenderer('connection-state-changed', state);
     });
 
-    this.backgroundService.on('messageProcessed', (message, signals) => {
-      this.sendToRenderer('message-processed', { message, signals });
+    this.backgroundService.on('messageProcessed', (message: any) => {
+      this.sendToRenderer('message-processed', { message });
     });
 
-    this.backgroundService.on('groupsUpdated', (groups) => {
+    this.backgroundService.on('groupsUpdated', (groups: any) => {
       this.sendToRenderer('groups-updated', groups);
     });
 
-    this.backgroundService.on('contextUpdated', (context) => {
+    this.backgroundService.on('contextUpdated', (context: any) => {
       this.sendToRenderer('context-updated', context);
     });
 
-    this.backgroundService.on('error', (error) => {
+    this.backgroundService.on('error', (error: any) => {
       this.sendToRenderer('service-error', { message: error.message, stack: error.stack });
     });
 
-    // Start the service
-    await this.backgroundService.start();
+    // Start the service (non-blocking)
+    console.log('🔄 Starting WhatsApp service...');
+    this.backgroundService.start().then(() => {
+      console.log('✅ WhatsApp service started!');
+    }).catch((err: any) => {
+      console.error('❌ WhatsApp service error:', err);
+    });
   }
 
   private sendToRenderer(channel: string, data: any) {

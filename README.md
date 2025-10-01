@@ -2,33 +2,48 @@
 
 A desktop application that monitors specified WhatsApp groups and generates project status reports with milestone tracking, todo extraction, and progress analysis.
 
+---
+
+## 🚀 **ONE-CLICK START**
+
+### Windows:
+**Double-click `START_HERE.bat`**
+
+### Mac/Linux:
+**Double-click `START_HERE.sh`** (or run `./START_HERE.sh` in terminal)
+
+### Or use terminal:
+```bash
+npm start
+```
+
+**That's it!** The app will:
+- ✅ Auto-install dependencies on first run
+- ✅ Auto-create default project context
+- ✅ Auto-build all packages
+- ✅ Launch the application
+
+---
+
 ## Features
 
 - **WhatsApp Integration**: Connect via QR code using whatsapp-web.js
 - **Group Monitoring**: Select which WhatsApp groups to monitor
-- **Smart Extraction**: AI-powered extraction of project signals from messages
 - **Milestone Tracking**: Monitor project milestones with status updates
 - **Snapshot Reports**: Generate structured status reports in Markdown/JSON
 - **Privacy First**: All data stored locally, optional cloud LLM processing
 - **Offline Capable**: Works without internet after initial setup
 
-## Architecture
+## Prerequisites
 
-- **Frontend**: React + TypeScript + Vite + TailwindCSS
-- **Backend**: Electron + Node.js + TypeScript
-- **Database**: SQLite with better-sqlite3
-- **WhatsApp**: whatsapp-web.js (headless Chromium)
-- **Processing**: Rule-based + optional LLM enhancement
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
+- Node.js 18+ ([Download here](https://nodejs.org/))
 - WhatsApp account (for QR login)
 
-### Installation
+---
+
+## Detailed Setup (Optional)
+
+If you prefer manual setup:
 
 1. Clone and install dependencies:
 ```bash
@@ -37,22 +52,9 @@ cd statuz
 npm install
 ```
 
-2. Set up environment (optional):
+2. Start the app:
 ```bash
-cp .env.example .env
-# Edit .env with your LLM API keys if desired
-```
-
-3. Create project context:
-```bash
-# Copy sample context files
-cp -r context-samples/ context/
-# Or create your own YAML files in context/
-```
-
-4. Start development:
-```bash
-npm run dev
+npm start
 ```
 
 ### Building for Production

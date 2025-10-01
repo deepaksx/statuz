@@ -1,4 +1,4 @@
-import { FileText, Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, Upload, AlertCircle } from 'lucide-react';
 
 export function Context() {
   const handleLoadSampleContext = async () => {
@@ -8,7 +8,7 @@ export function Context() {
 
   const handleOpenContextFolder = async () => {
     // In a real implementation, this would open the context folder
-    await window.electronAPI.openExternal('file:///' + 'context/');
+    await window.electronAPI?.openExternal('file:///' + 'context/');
   };
 
   return (

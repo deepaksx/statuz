@@ -1,10 +1,11 @@
 {
   "name": "statuz",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Desktop app for monitoring WhatsApp groups and generating project status reports",
   "main": "dist/main/main.js",
   "type": "module",
   "scripts": {
+    "start": "node start-app.cjs",
     "dev": "concurrently \"npm run dev:background\" \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:background": "cd packages/background && npm run dev",
     "dev:renderer": "cd apps/renderer && npm run dev",
@@ -21,7 +22,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:ci": "vitest run",
-    "postinstall": "echo 'Run npm run setup to install all packages'",
+    "postinstall": "npm run setup --if-present",
     "setup": "cd packages/shared && npm install && cd ../db && npm install && cd ../background && npm install && cd ../../apps/desktop && npm install && cd ../renderer && npm install",
     "dev:simple": "cd apps/renderer && npm run dev"
   },
@@ -31,12 +32,14 @@
   ],
   "devDependencies": {
     "@types/node": "^20.8.0",
+    "@types/qrcode-terminal": "^0.12.2",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",
     "concurrently": "^8.2.2",
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4",
     "eslint": "^8.50.0",
+    "qrcode": "^1.5.4",
     "typescript": "^5.2.2",
     "vitest": "^0.34.6",
     "wait-on": "^7.0.1"

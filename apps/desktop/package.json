@@ -1,7 +1,6 @@
 {
   "name": "@statuz/desktop",
-  "version": "1.0.0",
-  "type": "module",
+  "version": "2.0.0",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc",

@@ -2,90 +2,9 @@ import { z } from 'zod';
 
 export const MilestoneStatusSchema = z.enum(['NOT_STARTED', 'IN_PROGRESS', 'AT_RISK', 'BLOCKED', 'DONE']);
 
-export const SignalKindSchema = z.enum(['MILESTONE_UPDATE', 'TODO', 'RISK', 'DECISION', 'BLOCKER', 'INFO']);
-
 export const PrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH']);
 
 export const LikelihoodImpactSchema = z.enum(['LOW', 'MEDIUM', 'HIGH']);
-
-export const SignalBaseSchema = z.object({
-  id: z.string(),
-  messageId: z.string(),
-  createdAt: z.number(),
-});
-
-export const MilestoneUpdateSignalSchema = SignalBaseSchema.extend({
-  kind: z.literal('MILESTONE_UPDATE'),
-  payload: z.object({
-    milestoneId: z.string().optional(),
-    mentionedText: z.string(),
-    status: MilestoneStatusSchema.optional(),
-    percentComplete: z.number().min(0).max(100).optional(),
-    owner: z.string().optional(),
-    dueDate: z.string().optional(),
-    blockingIssue: z.string().optional(),
-    evidence: z.string().optional(),
-  }),
-});
-
-export const TodoSignalSchema = SignalBaseSchema.extend({
-  kind: z.literal('TODO'),
-  payload: z.object({
-    description: z.string(),
-    owner: z.string().optional(),
-    dueDate: z.string().optional(),
-    priority: PrioritySchema.optional(),
-    relatedMilestoneId: z.string().optional(),
-  }),
-});
-
-export const RiskSignalSchema = SignalBaseSchema.extend({
-  kind: z.literal('RISK'),
-  payload: z.object({
-    title: z.string(),
-    likelihood: LikelihoodImpactSchema.optional(),
-    impact: LikelihoodImpactSchema.optional(),
-    mitigation: z.string().optional(),
-    relatedMilestoneId: z.string().optional(),
-  }),
-});
-
-export const DecisionSignalSchema = SignalBaseSchema.extend({
-  kind: z.literal('DECISION'),
-  payload: z.object({
-    summary: z.string(),
-    decidedBy: z.string().optional(),
-    decisionDate: z.string().optional(),
-    relatedMilestoneId: z.string().optional(),
-  }),
-});
-
-export const BlockerSignalSchema = SignalBaseSchema.extend({
-  kind: z.literal('BLOCKER'),
-  payload: z.object({
-    title: z.string(),
-    description: z.string(),
-    owner: z.string().optional(),
-    relatedMilestoneId: z.string().optional(),
-  }),
-});
-
-export const InfoSignalSchema = SignalBaseSchema.extend({
-  kind: z.literal('INFO'),
-  payload: z.object({
-    summary: z.string(),
-    relatedMilestoneId: z.string().optional(),
-  }),
-});
-
-export const SignalSchema = z.discriminatedUnion('kind', [
-  MilestoneUpdateSignalSchema,
-  TodoSignalSchema,
-  RiskSignalSchema,
-  DecisionSignalSchema,
-  BlockerSignalSchema,
-  InfoSignalSchema,
-]);
 
 export const GroupSchema = z.object({
   id: z.string(),

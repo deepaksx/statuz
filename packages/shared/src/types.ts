@@ -1,87 +1,17 @@
 export type MilestoneStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'AT_RISK' | 'BLOCKED' | 'DONE';
 
-export type SignalKind = 'MILESTONE_UPDATE' | 'TODO' | 'RISK' | 'DECISION' | 'BLOCKER' | 'INFO';
-
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type LikelihoodImpact = 'LOW' | 'MEDIUM' | 'HIGH';
-
-export interface SignalBase {
-  id: string;
-  messageId: string;
-  createdAt: number;
-}
-
-export interface MilestoneUpdateSignal extends SignalBase {
-  kind: 'MILESTONE_UPDATE';
-  payload: {
-    milestoneId?: string;
-    mentionedText: string;
-    status?: MilestoneStatus;
-    percentComplete?: number;
-    owner?: string;
-    dueDate?: string;
-    blockingIssue?: string;
-    evidence?: string;
-  };
-}
-
-export interface TodoSignal extends SignalBase {
-  kind: 'TODO';
-  payload: {
-    description: string;
-    owner?: string;
-    dueDate?: string;
-    priority?: Priority;
-    relatedMilestoneId?: string;
-  };
-}
-
-export interface RiskSignal extends SignalBase {
-  kind: 'RISK';
-  payload: {
-    title: string;
-    likelihood?: LikelihoodImpact;
-    impact?: LikelihoodImpact;
-    mitigation?: string;
-    relatedMilestoneId?: string;
-  };
-}
-
-export interface DecisionSignal extends SignalBase {
-  kind: 'DECISION';
-  payload: {
-    summary: string;
-    decidedBy?: string;
-    decisionDate?: string;
-    relatedMilestoneId?: string;
-  };
-}
-
-export interface BlockerSignal extends SignalBase {
-  kind: 'BLOCKER';
-  payload: {
-    title: string;
-    description: string;
-    owner?: string;
-    relatedMilestoneId?: string;
-  };
-}
-
-export interface InfoSignal extends SignalBase {
-  kind: 'INFO';
-  payload: {
-    summary: string;
-    relatedMilestoneId?: string;
-  };
-}
-
-export type Signal = MilestoneUpdateSignal | TodoSignal | RiskSignal | DecisionSignal | BlockerSignal | InfoSignal;
 
 export interface Group {
   id: string;
   name: string;
   isWatched: boolean;
+  hasHistoryUploaded?: boolean;
+  historyUploadedAt?: number;
+  context?: string;
+  contextUpdatedAt?: number;
 }
 
 export interface Message {
@@ -129,9 +59,10 @@ export interface ProjectContext {
 }
 
 export interface WhatsAppConnectionState {
-  status: 'DISCONNECTED' | 'QR_REQUIRED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING';
+  status: 'DISCONNECTED' | 'QR_REQUIRED' | 'CONNECTING' | 'CONNECTED' | 'RECONNECTING' | 'BROWSER_MODE';
   qrCode?: string;
   error?: string;
+  message?: string;
 }
 
 export interface SnapshotReport {
@@ -169,8 +100,9 @@ export interface SnapshotReport {
 
 export interface AppConfig {
   privacyMode: boolean;
-  llmProvider: 'anthropic' | 'openai' | 'none';
+  llmProvider: 'anthropic' | 'openai' | 'gemini' | 'none';
   apiKey?: string;
+  geminiApiKey?: string;
   dataDirectory: string;
 }
 

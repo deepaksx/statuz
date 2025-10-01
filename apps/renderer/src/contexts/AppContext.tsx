@@ -1,15 +1,14 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import toast from 'react-hot-toast';
 import type {
   WhatsAppConnectionState,
   Group,
   Message,
-  Signal,
   Milestone,
-  ProjectContext,
   AppConfig,
   SnapshotReport
 } from '@statuz/shared';
+// Demo data removed - app now requires live backend
 
 interface AppContextType {
   // Connection state
@@ -18,7 +17,6 @@ interface AppContextType {
   // Data
   groups: Group[];
   messages: Message[];
-  signals: Signal[];
   milestones: Milestone[];
   config: AppConfig | null;
   stats: any;
@@ -27,7 +25,6 @@ interface AppContextType {
   loading: {
     groups: boolean;
     messages: boolean;
-    signals: boolean;
     milestones: boolean;
     snapshot: boolean;
   };
@@ -36,12 +33,22 @@ interface AppContextType {
   refreshGroups: () => Promise<void>;
   updateGroupWatchStatus: (groupId: string, isWatched: boolean) => Promise<void>;
   loadMessages: (groupId?: string, since?: number, limit?: number) => Promise<void>;
-  loadSignals: (kind?: string, since?: number, limit?: number) => Promise<void>;
+  getMessages: (groupId?: string, since?: number, limit?: number) => Promise<any[]>;
   loadMilestones: () => Promise<void>;
   generateSnapshot: (since?: number) => Promise<SnapshotReport | null>;
   exportSnapshot: (report: SnapshotReport, format: 'json' | 'markdown') => Promise<string | null>;
   updateConfig: (updates: Partial<AppConfig>) => Promise<void>;
   refreshStats: () => Promise<void>;
+  getGroupContext: (groupId: string) => Promise<{ context: string; contextUpdatedAt: number | null }>;
+  updateGroupContext: (groupId: string, context: string) => Promise<void>;
+  deleteGroupContext: (groupId: string) => Promise<void>;
+  generateGroupReport: (groupId: string, timeframe?: number) => Promise<any>;
+  getGroupMembers: (groupId: string) => Promise<any[]>;
+  uploadChatHistory: (groupId: string, content: string) => Promise<{ success: boolean; messagesProcessed: number; messagesInserted: number }>;
+  chatWithAI: (groupId: string, question: string, apiKey?: string) => Promise<{ answer: string; tokensUsed?: number }>;
+  testAIConnection: (apiKey?: string) => Promise<boolean>;
+  setGeminiApiKey: (apiKey: string) => Promise<void>;
+  sendMessage: (groupId: string, message: string) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -60,11 +67,11 @@ interface AppProviderProps {
 
 export function AppProvider({ children }: AppProviderProps) {
   const [connectionState, setConnectionState] = useState<WhatsAppConnectionState>({
-    status: 'DISCONNECTED'
+    status: typeof window !== 'undefined' && !window.electronAPI ? 'CONNECTED' : 'DISCONNECTED',
+    message: typeof window !== 'undefined' && !window.electronAPI ? 'Live backend connected • Real-time updates enabled' : undefined
   });
   const [groups, setGroups] = useState<Group[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [signals, setSignals] = useState<Signal[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [stats, setStats] = useState<any>(null);
@@ -72,7 +79,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const [loading, setLoading] = useState({
     groups: false,
     messages: false,
-    signals: false,
     milestones: false,
     snapshot: false
   });
@@ -88,8 +94,8 @@ export function AppProvider({ children }: AppProviderProps) {
         }
         return response.data;
       } else {
-        // Mock responses for browser mode
-        return getMockData(type, payload);
+        // Live backend for browser mode
+        return await getLiveData(type, payload);
       }
     } catch (error) {
       console.error(`IPC error (${type}):`, error);
@@ -98,111 +104,89 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
-  // Mock data for browser development (returns immediately)
-  const getMockData = (type: string, payload?: any) => {
-    console.log('Mock data request:', type); // Debug log
+  // Live backend integration
+  const getLiveData = async (type: string, payload?: any) => {
+    console.log('Live API request:', type); // Debug log
+    const baseUrl = 'http://localhost:3001/api';
 
-    switch (type) {
-      case 'get-connection-state':
-        return Promise.resolve({ status: 'DISCONNECTED' });
-      case 'get-groups':
-      case 'refresh-groups':
-        return Promise.resolve([
-          { id: 'group_1', name: 'SAP Implementation Team', isWatched: true },
-          { id: 'group_2', name: 'Daily Standup', isWatched: false },
-          { id: 'group_3', name: 'Project Updates', isWatched: true }
-        ]);
-      case 'get-messages':
-        return Promise.resolve([
-          {
-            id: 'msg_1',
-            groupId: 'group_1',
-            author: '1234567890@c.us',
-            authorName: 'John Smith',
-            timestamp: Date.now() - 3600000,
-            text: 'MTO Strategy 50 implementation is 70% complete. On track for October 30th deadline.',
-            raw: '{}'
-          },
-          {
-            id: 'msg_2',
-            groupId: 'group_1',
-            author: '2345678901@c.us',
-            authorName: 'Sarah Johnson',
-            timestamp: Date.now() - 7200000,
-            text: 'RAR setup completed successfully. Revenue recognition rules are working perfectly.',
-            raw: '{}'
-          }
-        ]);
-      case 'get-signals':
-        return Promise.resolve([
-          {
-            id: 'signal_1',
-            messageId: 'msg_1',
-            kind: 'MILESTONE_UPDATE',
-            createdAt: Date.now() - 3600000,
-            payload: {
-              milestoneId: 'MTO_STRATEGY_50',
-              mentionedText: 'MTO Strategy 50 implementation is 70% complete',
-              status: 'IN_PROGRESS',
-              percentComplete: 70
-            }
-          },
-          {
-            id: 'signal_2',
-            messageId: 'msg_2',
-            kind: 'MILESTONE_UPDATE',
-            createdAt: Date.now() - 7200000,
-            payload: {
-              milestoneId: 'RAR_SETUP',
-              mentionedText: 'RAR setup completed successfully',
-              status: 'DONE'
-            }
-          }
-        ]);
-      case 'get-milestones':
-        return Promise.resolve([
-          {
-            id: 'MTO_STRATEGY_50',
-            title: 'MTO Strategy Implementation',
-            description: 'Configure Make-to-Order strategy with variant configuration',
-            owner: 'John Smith',
-            dueDate: '2024-10-30',
-            acceptanceCriteria: 'All MTO workflows functional',
-            status: 'IN_PROGRESS',
-            lastUpdateTs: Date.now() - 3600000
-          },
-          {
-            id: 'RAR_SETUP',
-            title: 'Revenue Accounting Setup',
-            description: 'Implement RAR functionality for subscription billing',
-            owner: 'Sarah Johnson',
-            dueDate: '2024-11-15',
-            acceptanceCriteria: 'RAR module configured and tested',
-            status: 'DONE',
-            lastUpdateTs: Date.now() - 7200000
-          }
-        ]);
-      case 'get-config':
-        return Promise.resolve({
-          privacyMode: true,
-          llmProvider: 'none',
-          dataDirectory: '/mock/data'
-        });
-      case 'get-stats':
-        return Promise.resolve({
-          watchedGroups: 2,
-          totalMessages: 15,
-          totalSignals: 8,
-          totalMilestones: 5,
-          completedMilestones: 2
-        });
-      case 'update-group-watch-status':
-        return Promise.resolve(true);
-      default:
-        return Promise.resolve(null);
+    try {
+      switch (type) {
+        case 'get-connection-state':
+          const connRes = await fetch(`${baseUrl}/connection-state`);
+          return await connRes.json();
+
+        case 'get-groups':
+        case 'refresh-groups':
+          const groupsRes = await fetch(`${baseUrl}/groups`);
+          return await groupsRes.json();
+
+        case 'get-messages':
+          const messagesRes = await fetch(`${baseUrl}/messages`);
+          return await messagesRes.json();
+
+        case 'get-milestones':
+          const milestonesRes = await fetch(`${baseUrl}/milestones`);
+          return await milestonesRes.json();
+
+        case 'get-stats':
+          const statsRes = await fetch(`${baseUrl}/stats`);
+          return await statsRes.json();
+
+        case 'update-group-watch-status':
+          const updateRes = await fetch(`${baseUrl}/groups/${payload.groupId}/watch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isWatched: payload.isWatched })
+          });
+          return await updateRes.json();
+
+        case 'get-group-context':
+          const contextRes = await fetch(`${baseUrl}/groups/${payload.groupId}/context`);
+          return await contextRes.json();
+
+        case 'update-group-context':
+          const updateContextRes = await fetch(`${baseUrl}/groups/${payload.groupId}/context`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context: payload.context })
+          });
+          return await updateContextRes.json();
+
+        case 'delete-group-context':
+          const deleteContextRes = await fetch(`${baseUrl}/groups/${payload.groupId}/context`, {
+            method: 'DELETE'
+          });
+          return await deleteContextRes.json();
+
+        case 'generate-group-report':
+          const reportRes = await fetch(`${baseUrl}/groups/${payload.groupId}/generate-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeframe: payload.timeframe || 30 })
+          });
+          return await reportRes.json();
+
+        case 'get-config':
+          const configRes = await fetch(`${baseUrl}/config`);
+          return await configRes.json();
+
+        case 'update-config':
+          const updateConfigRes = await fetch(`${baseUrl}/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          return await updateConfigRes.json();
+
+        default:
+          return null;
+      }
+
+    } catch (error) {
+      console.error('Live API error:', error);
+      return Promise.resolve(null);
     }
   };
-
   // Event handlers
   useEffect(() => {
     const handleConnectionStateChanged = (state: WhatsAppConnectionState) => {
@@ -220,16 +204,11 @@ export function AppProvider({ children }: AppProviderProps) {
       setGroups(updatedGroups);
     };
 
-    const handleMessageProcessed = ({ message, signals: newSignals }: { message: Message; signals: Signal[] }) => {
+    const handleMessageProcessed = ({ message }: { message: Message }) => {
       // Add new message to the list if it's from a watched group
       const group = groups.find(g => g.id === message.groupId && g.isWatched);
       if (group) {
         setMessages(prev => [message, ...prev.filter(m => m.id !== message.id)]);
-        setSignals(prev => [...newSignals, ...prev]);
-
-        if (newSignals.length > 0) {
-          toast.success(`${newSignals.length} signals extracted from new message`);
-        }
       }
     };
 
@@ -246,13 +225,13 @@ export function AppProvider({ children }: AppProviderProps) {
 
       // Cleanup
       return () => {
-        window.electronAPI.removeListener('connection-state-changed', handleConnectionStateChanged);
-        window.electronAPI.removeListener('groups-updated', handleGroupsUpdated);
-        window.electronAPI.removeListener('message-processed', handleMessageProcessed);
-        window.electronAPI.removeListener('service-error', handleServiceError);
+        window.electronAPI?.removeListener('connection-state-changed', handleConnectionStateChanged);
+        window.electronAPI?.removeListener('groups-updated', handleGroupsUpdated);
+        window.electronAPI?.removeListener('message-processed', handleMessageProcessed);
+        window.electronAPI?.removeListener('service-error', handleServiceError);
       };
     }
-  }, [groups]);
+  }, []); // Empty dependency array - only run once!
 
   // Initialize app
   useEffect(() => {
@@ -315,13 +294,13 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
-  const loadSignals = async (kind?: string, since?: number, limit?: number) => {
-    setLoading(prev => ({ ...prev, signals: true }));
+  const getMessages = async (groupId?: string, since?: number, limit?: number) => {
     try {
-      const loadedSignals = await invoke('get-signals', { kind, since, limit });
-      setSignals(loadedSignals);
-    } finally {
-      setLoading(prev => ({ ...prev, signals: false }));
+      const messages = await invoke('get-messages', { groupId, since, limit });
+      return messages;
+    } catch (error) {
+      console.error('Failed to get messages:', error);
+      return [];
     }
   };
 
@@ -364,8 +343,10 @@ export function AppProvider({ children }: AppProviderProps) {
       const newConfig = await invoke('update-config', updates);
       setConfig(newConfig);
       toast.success('Configuration updated');
+      return newConfig;
     } catch (error) {
       console.error('Failed to update config:', error);
+      throw error;
     }
   };
 
@@ -378,11 +359,122 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  const getGroupContext = async (groupId: string) => {
+    try {
+      const result = await invoke('get-group-context', { groupId });
+      return result;
+    } catch (error) {
+      console.error('Failed to get group context:', error);
+      throw error;
+    }
+  };
+
+  const updateGroupContext = async (groupId: string, context: string) => {
+    try {
+      await invoke('update-group-context', { groupId, context });
+      // Update local state to reflect the change
+      setGroups(prev => prev.map(g =>
+        g.id === groupId ? { ...g, context, contextUpdatedAt: Date.now() } : g
+      ));
+      toast.success('Group context updated successfully');
+    } catch (error) {
+      console.error('Failed to update group context:', error);
+      throw error;
+    }
+  };
+
+  const deleteGroupContext = async (groupId: string) => {
+    try {
+      await invoke('delete-group-context', { groupId });
+      // Update local state to reflect the change
+      setGroups(prev => prev.map(g =>
+        g.id === groupId ? { ...g, context: undefined, contextUpdatedAt: undefined } : g
+      ));
+      toast.success('Group context deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete group context:', error);
+      throw error;
+    }
+  };
+
+  const generateGroupReport = async (groupId: string, timeframe = 30) => {
+    try {
+      const result = await invoke('generate-group-report', { groupId, timeframe });
+      return result;
+    } catch (error) {
+      console.error('Failed to generate group report:', error);
+      throw error;
+    }
+  };
+
+  const getGroupMembers = async (groupId: string) => {
+    try {
+      const members = await invoke('get-group-members', { groupId });
+      return members;
+    } catch (error) {
+      console.error('Failed to get group members:', error);
+      throw error;
+    }
+  };
+
+  const uploadChatHistory = async (groupId: string, content: string) => {
+    try {
+      const result = await invoke('upload-chat-history', { groupId, content });
+      return result;
+    } catch (error) {
+      console.error('Failed to upload chat history:', error);
+      throw error;
+    }
+  };
+
+  const chatWithAI = async (groupId: string, question: string, apiKey?: string) => {
+    try {
+      const result = await invoke('ai-chat', { groupId, question, apiKey });
+      return result;
+    } catch (error) {
+      console.error('Failed to chat with AI:', error);
+      throw error;
+    }
+  };
+
+  const testAIConnection = async (apiKey?: string) => {
+    try {
+      const result = await invoke('test-ai-connection', { apiKey });
+      return result;
+    } catch (error) {
+      console.error('Failed to test AI connection:', error);
+      return false;
+    }
+  };
+
+  const setGeminiApiKey = async (apiKey: string) => {
+    try {
+      await invoke('set-gemini-api-key', { apiKey });
+      // Update local config
+      setConfig(prev => prev ? { ...prev, geminiApiKey: apiKey } : null);
+      toast.success('Gemini API key saved successfully');
+    } catch (error) {
+      console.error('Failed to set Gemini API key:', error);
+      throw error;
+    }
+  };
+
+  const sendMessage = async (groupId: string, message: string) => {
+    try {
+      const result = await invoke('send-message', { groupId, message });
+      toast.success('Message sent successfully!');
+      return result;
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send message');
+      throw error;
+    }
+  };
+
   const value: AppContextType = {
     connectionState,
     groups,
     messages,
-    signals,
     milestones,
     config,
     stats,
@@ -390,12 +482,22 @@ export function AppProvider({ children }: AppProviderProps) {
     refreshGroups,
     updateGroupWatchStatus,
     loadMessages,
-    loadSignals,
+    getMessages,
     loadMilestones,
     generateSnapshot,
     exportSnapshot,
     updateConfig,
-    refreshStats
+    refreshStats,
+    getGroupContext,
+    updateGroupContext,
+    deleteGroupContext,
+    generateGroupReport,
+    getGroupMembers,
+    uploadChatHistory,
+    chatWithAI,
+    testAIConnection,
+    setGeminiApiKey,
+    sendMessage
   };
 
   return (

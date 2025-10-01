@@ -3,9 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   BarChart3,
   Users,
-  MessageSquare,
-  Target,
-  FileText,
   Settings,
   Menu,
   X,
@@ -29,9 +26,6 @@ export function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BarChart3 },
     { name: 'Groups', href: '/groups', icon: Users },
-    { name: 'Messages', href: '/messages', icon: MessageSquare },
-    { name: 'Signals', href: '/signals', icon: Target },
-    { name: 'Context', href: '/context', icon: FileText },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
@@ -44,6 +38,8 @@ export function Layout({ children }: LayoutProps) {
       case 'CONNECTING':
       case 'RECONNECTING':
         return <RotateCcw className="h-4 w-4 text-primary-600 animate-spin" />;
+      case 'BROWSER_MODE':
+        return <Wifi className="h-4 w-4 text-blue-600" />;
       default:
         return <WifiOff className="h-4 w-4 text-error-600" />;
     }
@@ -59,6 +55,8 @@ export function Layout({ children }: LayoutProps) {
         return 'Connecting...';
       case 'RECONNECTING':
         return 'Reconnecting...';
+      case 'BROWSER_MODE':
+        return 'Browser Mode';
       default:
         return 'Disconnected';
     }
@@ -164,6 +162,7 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+
     </div>
   );
 }

@@ -121,3 +121,6 @@ user-data/
 # Local configuration
 config.local.json
 settings.local.json
+
+# Claude Code
+.claude/

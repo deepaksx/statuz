@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { IpcMessage, IpcResponse } from '@statuz/shared';
+import type { IpcMessage, IpcResponse } from '@statuz/shared' with { 'resolution-mode': 'import' };
 
 // Define the API that will be exposed to the renderer process
 const electronAPI = {

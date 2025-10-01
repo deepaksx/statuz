@@ -1,7 +1,19 @@
-import { Client, LocalAuth, Events } from 'whatsapp-web.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { Client, LocalAuth } = require('whatsapp-web.js');
 import QRCode from 'qrcode-terminal';
 import { EventEmitter } from 'events';
 import type { WhatsAppConnectionState, Group, Message } from '@statuz/shared';
+
+// Event constants
+const Events = {
+  QR_RECEIVED: 'qr',
+  AUTHENTICATED: 'authenticated',
+  READY: 'ready',
+  DISCONNECTED: 'disconnected',
+  AUTH_FAILURE: 'auth_failure',
+  MESSAGE_RECEIVED: 'message_create'
+};
 
 export interface WhatsAppClientEvents {
   connectionStateChanged: (state: WhatsAppConnectionState) => void;
@@ -10,7 +22,7 @@ export interface WhatsAppClientEvents {
 }
 
 export class WhatsAppClient extends EventEmitter {
-  private client: Client;
+  private client: any;
   private connectionState: WhatsAppConnectionState = { status: 'DISCONNECTED' };
   private sessionPath: string;
 
@@ -63,13 +75,24 @@ export class WhatsAppClient extends EventEmitter {
       this.updateConnectionState({ status: 'DISCONNECTED', error: `Authentication failed: ${message}` });
     });
 
-    this.client.on(Events.MESSAGE_RECEIVED, async (message) => {
-      if (message.fromMe) return;
+    this.client.on(Events.MESSAGE_RECEIVED, async (message: any) => {
+      console.log('📱 MESSAGE_RECEIVED event fired in WhatsApp client');
+
+      if (message.fromMe) {
+        console.log('⏭️  Skipping message from self');
+        return;
+      }
 
       const chat = await message.getChat();
-      if (!chat.isGroup) return;
+      console.log(`📝 Message from chat: ${chat.name}, isGroup: ${chat.isGroup}`);
+
+      if (!chat.isGroup) {
+        console.log('⏭️  Skipping non-group message');
+        return;
+      }
 
       const contact = await message.getContact();
+      console.log(`👤 Message author: ${contact.name || contact.pushname || 'Unknown'}`);
 
       const processedMessage: Message = {
         id: message.id._serialized,
@@ -87,6 +110,7 @@ export class WhatsAppClient extends EventEmitter {
         })
       };
 
+      console.log(`🚀 Emitting 'message' event for group: ${chat.name}`);
       this.emit('message', processedMessage);
     });
   }
@@ -98,27 +122,34 @@ export class WhatsAppClient extends EventEmitter {
 
   private async loadGroups() {
     try {
+      console.log('🔄 loadGroups() called on READY event');
       const chats = await this.client.getChats();
+      console.log(`📡 loadGroups: Received ${chats.length} chats from WhatsApp`);
+
       const groups: Group[] = chats
-        .filter(chat => chat.isGroup)
-        .map(chat => ({
+        .filter((chat: any) => chat.isGroup)
+        .map((chat: any) => ({
           id: chat.id._serialized,
           name: chat.name,
           isWatched: false
         }));
 
+      console.log(`✅ loadGroups: Emitting ${groups.length} groups`);
       this.emit('groupsUpdated', groups);
     } catch (error) {
-      console.error('Failed to load groups:', error);
+      console.error('❌ Failed to load groups:', error);
     }
   }
 
   async initialize() {
     try {
+      console.log('🔄 Initializing WhatsApp client...');
+      console.log('⏳ This may take a few minutes on first run (downloading Chromium)');
       this.updateConnectionState({ status: 'CONNECTING' });
       await this.client.initialize();
+      console.log('✅ WhatsApp client initialization complete');
     } catch (error) {
-      console.error('WhatsApp client initialization failed:', error);
+      console.error('❌ WhatsApp client initialization failed:', error);
       this.updateConnectionState({
         status: 'DISCONNECTED',
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -140,26 +171,52 @@ export class WhatsAppClient extends EventEmitter {
   }
 
   async getGroups(): Promise<Group[]> {
+    console.log('🔍 getGroups() called. Connection status:', this.connectionState.status);
+
     if (this.connectionState.status !== 'CONNECTED') {
+      console.log('❌ Not connected, returning empty array');
       return [];
     }
 
     try {
+      console.log('📡 Fetching chats from WhatsApp client...');
       const chats = await this.client.getChats();
-      return chats
-        .filter(chat => chat.isGroup)
-        .map(chat => ({
-          id: chat.id._serialized,
-          name: chat.name,
-          isWatched: false
-        }));
+      console.log(`✅ Received ${chats.length} chats from WhatsApp`);
+
+      const groupChats = chats.filter((chat: any) => chat.isGroup);
+      console.log(`📊 Found ${groupChats.length} group chats out of ${chats.length} total chats`);
+
+      const groups = groupChats.map((chat: any) => ({
+        id: chat.id._serialized,
+        name: chat.name,
+        isWatched: false
+      }));
+
+      console.log(`✅ Returning ${groups.length} groups:`, groups.slice(0, 5).map((g: Group) => g.name));
+      return groups;
     } catch (error) {
-      console.error('Failed to get groups:', error);
+      console.error('❌ Failed to get groups:', error);
       return [];
     }
   }
 
   isConnected(): boolean {
     return this.connectionState.status === 'CONNECTED';
+  }
+
+  async sendMessage(groupId: string, message: string): Promise<boolean> {
+    if (!this.isConnected()) {
+      throw new Error('WhatsApp is not connected. Please wait for connection.');
+    }
+
+    try {
+      console.log(`📤 Sending message to group ${groupId}: "${message}"`);
+      await this.client.sendMessage(groupId, message);
+      console.log('✅ Message sent successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to send message:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to send message');
+    }
   }
 }

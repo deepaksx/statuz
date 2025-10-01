@@ -1,0 +1,6 @@
+{
+  "privacyMode": false,
+  "llmProvider": "gemini",
+  "dataDirectory": "/live/data",
+  "geminiApiKey": "AIzaSyATin4k3qNzF8PCfQC2jslf_mwUdUOTxLU"
+}

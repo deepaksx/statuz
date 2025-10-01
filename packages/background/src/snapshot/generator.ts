@@ -1,4 +1,4 @@
-import type { SnapshotReport, Signal, Milestone, MilestoneStatus } from '@statuz/shared';
+import type { SnapshotReport, Milestone } from '@statuz/shared';
 import type { StatuzDatabase } from '@statuz/db';
 
 export class SnapshotGenerator {
@@ -6,30 +6,18 @@ export class SnapshotGenerator {
 
   async generateSnapshot(since?: number): Promise<SnapshotReport> {
     const now = Date.now();
-    const snapshotSince = since || this.db.getLastSnapshotTime();
-
-    // Get all signals since the last snapshot
-    const signals = this.db.getSignals(undefined, snapshotSince);
+    // Since signals are removed, we don't need snapshot timing logic
 
     // Get current milestones
-    const milestones = this.db.getMilestones();
-
-    // Update milestone statuses based on signals
-    const updatedMilestones = this.updateMilestoneStatuses(milestones, signals);
+    const milestones = await this.db.getMilestones();
 
     // Generate executive summary
-    const executiveSummary = this.generateExecutiveSummary(updatedMilestones, signals);
+    const executiveSummary = this.generateExecutiveSummary(milestones);
 
-    // Extract action items from TODO signals
-    const actionItems = this.extractActionItems(signals);
+    // Empty action items and decisions (previously from signals)
+    const actionItems: any[] = [];
+    const decisions: any[] = [];
 
-    // Extract decisions from DECISION signals
-    const decisions = this.extractDecisions(signals);
-
-    // Save updated milestone statuses
-    for (const milestone of updatedMilestones) {
-      this.db.upsertMilestone(milestone);
-    }
 
     // Update last snapshot time
     this.db.setLastSnapshotTime(now);
@@ -37,124 +25,36 @@ export class SnapshotGenerator {
     const report: SnapshotReport = {
       generatedAt: now,
       executiveSummary,
-      milestones: updatedMilestones.map(m => ({
+      milestones: milestones.map(m => ({
         id: m.id,
         title: m.title,
         owner: m.owner,
         dueDate: m.dueDate,
         status: m.status,
-        lastUpdateNote: this.getLastUpdateNote(m.id, signals)
+        lastUpdateNote: undefined
       })),
       actionItems,
       decisions
     };
 
-    this.db.auditLog('SNAPSHOT_GENERATED', `Snapshot generated with ${signals.length} signals`);
+    this.db.auditLog('SNAPSHOT_GENERATED', `Snapshot generated with ${milestones.length} milestones`);
 
     return report;
   }
 
-  private updateMilestoneStatuses(milestones: Milestone[], signals: Signal[]): Milestone[] {
-    const updated = [...milestones];
 
-    for (const milestone of updated) {
-      const relevantSignals = signals.filter(signal =>
-        this.isSignalRelevantToMilestone(signal, milestone)
-      );
 
-      if (relevantSignals.length === 0) continue;
 
-      // Sort signals by creation time (newest first)
-      relevantSignals.sort((a, b) => b.createdAt - a.createdAt);
-
-      const newStatus = this.calculateMilestoneStatus(milestone, relevantSignals);
-      if (newStatus && newStatus !== milestone.status) {
-        milestone.status = newStatus;
-        milestone.lastUpdateTs = Date.now();
-      }
-    }
-
-    return updated;
-  }
-
-  private isSignalRelevantToMilestone(signal: Signal, milestone: Milestone): boolean {
-    // Direct milestone ID match
-    if (signal.kind === 'MILESTONE_UPDATE' && signal.payload.milestoneId === milestone.id) {
-      return true;
-    }
-
-    // Check if signal mentions milestone in any payload field that could reference it
-    const payloadText = JSON.stringify(signal.payload).toLowerCase();
-    const milestoneKeywords = [
-      milestone.id.toLowerCase(),
-      milestone.title.toLowerCase(),
-      ...milestone.title.toLowerCase().split(/\s+/)
-    ];
-
-    return milestoneKeywords.some(keyword =>
-      keyword.length > 2 && payloadText.includes(keyword)
-    );
-  }
-
-  private calculateMilestoneStatus(milestone: Milestone, signals: Signal[]): MilestoneStatus | null {
-    // Check for explicit status updates
-    for (const signal of signals) {
-      if (signal.kind === 'MILESTONE_UPDATE' && signal.payload.status) {
-        return signal.payload.status;
-      }
-    }
-
-    // Check for blockers
-    const hasBlockers = signals.some(signal =>
-      signal.kind === 'BLOCKER' || signal.kind === 'RISK'
-    );
-
-    // Check due date proximity for at-risk status
-    const dueDate = new Date(milestone.dueDate);
-    const daysToDue = (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-
-    if (hasBlockers) {
-      return 'BLOCKED';
-    }
-
-    if (daysToDue < 7 && daysToDue > 0 && milestone.status !== 'DONE') {
-      return 'AT_RISK';
-    }
-
-    // Check for progress indicators
-    const hasProgress = signals.some(signal =>
-      signal.kind === 'MILESTONE_UPDATE' ||
-      signal.kind === 'TODO' ||
-      signal.kind === 'INFO'
-    );
-
-    if (hasProgress && milestone.status === 'NOT_STARTED') {
-      return 'IN_PROGRESS';
-    }
-
-    return null;
-  }
-
-  private generateExecutiveSummary(milestones: Milestone[], signals: Signal[]) {
+  private generateExecutiveSummary(milestones: Milestone[]) {
     const totalMilestones = milestones.length;
     const completedMilestones = milestones.filter(m => m.status === 'DONE').length;
-    const atRiskMilestones = milestones.filter(m => m.status === 'AT_RISK' || m.status === 'BLOCKED');
+    // Removed at-risk milestones logic as it was signal-dependent
 
     const progress = totalMilestones > 0
       ? `${completedMilestones}/${totalMilestones} milestones completed (${Math.round(completedMilestones / totalMilestones * 100)}%)`
       : 'No milestones defined';
 
-    const risks = signals
-      .filter(signal => signal.kind === 'RISK' || signal.kind === 'BLOCKER')
-      .map(signal => {
-        if (signal.kind === 'RISK') {
-          return signal.payload.title;
-        } else if (signal.kind === 'BLOCKER') {
-          return signal.payload.title;
-        }
-        return '';
-      })
-      .filter(risk => risk.length > 0);
+    const risks: string[] = []; // No longer extracting from signals
 
     const now = Date.now();
     const upcomingDeadlines = milestones
@@ -179,65 +79,8 @@ export class SnapshotGenerator {
     };
   }
 
-  private extractActionItems(signals: Signal[]) {
-    return signals
-      .filter(signal => signal.kind === 'TODO')
-      .map(signal => ({
-        description: signal.payload.description,
-        owner: signal.payload.owner,
-        dueDate: signal.payload.dueDate,
-        priority: signal.payload.priority
-      }))
-      .sort((a, b) => {
-        // Sort by priority (HIGH > MEDIUM > LOW)
-        const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-        const aPriority = priorityOrder[a.priority || 'MEDIUM'];
-        const bPriority = priorityOrder[b.priority || 'MEDIUM'];
-        return bPriority - aPriority;
-      });
-  }
 
-  private extractDecisions(signals: Signal[]) {
-    return signals
-      .filter(signal => signal.kind === 'DECISION')
-      .map(signal => ({
-        summary: signal.payload.summary,
-        decidedBy: signal.payload.decidedBy,
-        decisionDate: signal.payload.decisionDate
-      }))
-      .sort((a, b) => {
-        // Sort by decision date if available
-        if (a.decisionDate && b.decisionDate) {
-          return new Date(b.decisionDate).getTime() - new Date(a.decisionDate).getTime();
-        }
-        return 0;
-      });
-  }
 
-  private getLastUpdateNote(milestoneId: string, signals: Signal[]): string | undefined {
-    const relevantSignals = signals
-      .filter(signal => this.isSignalRelevantToMilestone(signal, { id: milestoneId } as Milestone))
-      .sort((a, b) => b.createdAt - a.createdAt);
-
-    if (relevantSignals.length === 0) return undefined;
-
-    const latestSignal = relevantSignals[0];
-
-    switch (latestSignal.kind) {
-      case 'MILESTONE_UPDATE':
-        return latestSignal.payload.mentionedText;
-      case 'TODO':
-        return `Action: ${latestSignal.payload.description}`;
-      case 'RISK':
-        return `Risk: ${latestSignal.payload.title}`;
-      case 'DECISION':
-        return `Decision: ${latestSignal.payload.summary}`;
-      case 'BLOCKER':
-        return `Blocker: ${latestSignal.payload.title}`;
-      default:
-        return latestSignal.payload.summary || 'Update received';
-    }
-  }
 
   formatAsMarkdown(report: SnapshotReport): string {
     const date = new Date(report.generatedAt).toLocaleString();

@@ -3,7 +3,9 @@ export const CREATE_TABLES = `
 CREATE TABLE IF NOT EXISTS groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  is_watched INTEGER NOT NULL DEFAULT 0
+  is_watched INTEGER NOT NULL DEFAULT 0,
+  has_history_uploaded INTEGER NOT NULL DEFAULT 0,
+  history_uploaded_at INTEGER
 );
 
 -- Messages table
@@ -18,15 +20,6 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (group_id) REFERENCES groups(id)
 );
 
--- Signals table
-CREATE TABLE IF NOT EXISTS signals (
-  id TEXT PRIMARY KEY,
-  message_id TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK(kind IN ('MILESTONE_UPDATE','TODO','RISK','DECISION','BLOCKER','INFO')),
-  payload TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (message_id) REFERENCES messages(id)
-);
 
 -- Milestones table
 CREATE TABLE IF NOT EXISTS milestones (
@@ -53,15 +46,19 @@ CREATE TABLE IF NOT EXISTS audit (
   detail TEXT NOT NULL,
   ts INTEGER NOT NULL
 );
+
+-- Group context table (for storing member roles and other group-specific data)
+CREATE TABLE IF NOT EXISTS group_context (
+  group_id TEXT PRIMARY KEY,
+  context TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `;
 
 export const CREATE_INDEXES = `
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_messages_group_id ON messages(group_id);
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
-CREATE INDEX IF NOT EXISTS idx_signals_message_id ON signals(message_id);
-CREATE INDEX IF NOT EXISTS idx_signals_kind ON signals(kind);
-CREATE INDEX IF NOT EXISTS idx_signals_created_at ON signals(created_at);
 CREATE INDEX IF NOT EXISTS idx_milestones_status ON milestones(status);
 CREATE INDEX IF NOT EXISTS idx_milestones_due_date ON milestones(due_date);
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts);

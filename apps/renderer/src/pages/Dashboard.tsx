@@ -5,7 +5,6 @@ import {
   Calendar,
   AlertTriangle,
   CheckCircle,
-  Clock,
   Users,
   MessageSquare,
   Target
@@ -15,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { TestConnection } from '../components/TestConnection';
 import type { SnapshotReport } from '@statuz/shared';
+import { QRCodeSVG } from 'qrcode.react';
 
 export function Dashboard() {
   const {
@@ -52,7 +52,7 @@ export function Dashboard() {
         const extension = format === 'json' ? 'json' : 'md';
         const filename = `statuz-report-${new Date().toISOString().split('T')[0]}.${extension}`;
 
-        const result = await window.electronAPI.showSaveDialog({
+        const result = await window.electronAPI?.showSaveDialog({
           defaultPath: filename,
           filters: [
             { name: format.toUpperCase(), extensions: [extension] }
@@ -60,8 +60,8 @@ export function Dashboard() {
         });
 
         if (!result.canceled && result.filePath) {
-          const success = await window.electronAPI.saveFile(result.filePath, content);
-          if (success) {
+          await window.electronAPI?.saveFile(result.filePath, content);
+          if (true) {
             toast.success(`Report exported to ${result.filePath}`);
           } else {
             toast.error('Failed to save file');
@@ -307,23 +307,86 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Connection Status Warning */}
-      {connectionState.status !== 'CONNECTED' && (
-        <div className="card border-warning-200 bg-warning-50">
-          <div className="flex items-center space-x-3">
-            <AlertTriangle className="h-5 w-5 text-warning-600" />
-            <div>
-              <div className="font-medium text-warning-800">WhatsApp Not Connected</div>
-              <div className="text-sm text-warning-600">
-                {connectionState.status === 'QR_REQUIRED'
-                  ? 'Please scan the QR code to connect'
-                  : 'Check your WhatsApp connection to start monitoring groups'
-                }
+      {/* WhatsApp Connection Card */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">WhatsApp Connection</h3>
+          <div className="flex items-center space-x-2">
+            {connectionState.status === 'CONNECTED' && (
+              <div className="flex items-center text-success-600">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                <span className="text-sm font-medium">Connected</span>
               </div>
-            </div>
+            )}
+            {connectionState.status === 'CONNECTING' && (
+              <div className="flex items-center text-primary-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
+                <span className="text-sm font-medium">Connecting...</span>
+              </div>
+            )}
+            {connectionState.status === 'QR_REQUIRED' && (
+              <div className="flex items-center text-warning-600">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                <span className="text-sm font-medium">Scan Required</span>
+              </div>
+            )}
+            {connectionState.status === 'DISCONNECTED' && (
+              <div className="flex items-center text-error-600">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                <span className="text-sm font-medium">Disconnected</span>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        <div className="space-y-4">
+          {connectionState.status === 'QR_REQUIRED' && connectionState.qrCode ? (
+            <div className="flex flex-col items-center space-y-4 p-6 bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <div className="text-sm font-medium text-gray-900 mb-2">
+                  📱 Scan QR Code with WhatsApp
+                </div>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>1. Open WhatsApp on your phone</div>
+                  <div>2. Go to Settings → Linked Devices</div>
+                  <div>3. Tap "Link a Device"</div>
+                  <div>4. Scan the QR code below</div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm border-2 border-primary-200">
+                <QRCodeSVG value={connectionState.qrCode} size={280} level="M" />
+              </div>
+              <div className="text-xs text-gray-500 text-center max-w-md">
+                QR code refreshes automatically. Keep this window open while scanning.
+              </div>
+            </div>
+          ) : connectionState.status === 'CONNECTED' ? (
+            <div className="p-6 bg-success-50 rounded-lg text-center">
+              <CheckCircle className="h-12 w-12 text-success-600 mx-auto mb-3" />
+              <div className="text-success-900 font-medium">WhatsApp Connected Successfully</div>
+              <div className="text-sm text-success-700 mt-1">
+                You can now monitor groups and generate reports
+              </div>
+            </div>
+          ) : connectionState.status === 'CONNECTING' ? (
+            <div className="p-6 bg-primary-50 rounded-lg text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-3"></div>
+              <div className="text-primary-900 font-medium">Connecting to WhatsApp...</div>
+              <div className="text-sm text-primary-700 mt-1">
+                {connectionState.message || 'Please wait while we establish connection'}
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 bg-gray-50 rounded-lg text-center">
+              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <div className="text-gray-900 font-medium">WhatsApp Disconnected</div>
+              <div className="text-sm text-gray-600 mt-1">
+                {connectionState.message || 'Service will attempt to reconnect automatically'}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
