@@ -334,6 +334,37 @@ class StatuzApp {
       case 'get-authors-from-watched-groups':
         return await this.backgroundService.getAuthorsFromWatchedGroups();
 
+      // ==================== AIPM PROJECT MANAGEMENT ====================
+
+      case 'get-projects':
+        const { status: projectStatus } = message.payload || {};
+        return await this.backgroundService.getProjects({ status: projectStatus });
+
+      case 'create-project':
+        return await this.backgroundService.createProject(message.payload);
+
+      case 'get-tasks':
+        const { projectId: taskProjectId, status: taskStatus, ownerPhone } = message.payload || {};
+        return await this.backgroundService.getTasks({
+          projectId: taskProjectId,
+          status: taskStatus,
+          ownerPhone
+        });
+
+      case 'create-task':
+        return await this.backgroundService.createTask(message.payload);
+
+      case 'update-task':
+        const { taskId, updates } = message.payload;
+        return await this.backgroundService.updateTask(taskId, updates);
+
+      case 'get-risks':
+        const { projectId: riskProjectId } = message.payload || {};
+        return await this.backgroundService.getRisks({ projectId: riskProjectId });
+
+      case 'get-conflicts':
+        return await this.backgroundService.getConflicts();
+
       case 'get-config':
         return this.config;
 

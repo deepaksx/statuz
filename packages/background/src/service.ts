@@ -17,6 +17,9 @@ import type {
   SnapshotReport,
   AppConfig
 } from '@statuz/shared';
+import { eventBus } from '@aipm/event-bus';
+import { ParserAgent } from '@aipm/agents';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface BackgroundServiceEvents {
   connectionStateChanged: (state: WhatsAppConnectionState) => void;
@@ -32,6 +35,7 @@ export class BackgroundService extends EventEmitter {
   private contextLoader: ContextLoader;
   private snapshotGenerator: SnapshotGenerator;
   private aiService: AIService;
+  private parserAgent: ParserAgent | null = null;
   private config: AppConfig;
   private isRunning = false;
   private contextChecksum = '';
@@ -58,6 +62,14 @@ export class BackgroundService extends EventEmitter {
     this.snapshotGenerator = new SnapshotGenerator(this.db);
     this.aiService = new AIService();
 
+    // Initialize Parser Agent if Gemini API key is available
+    if (config.geminiApiKey) {
+      this.parserAgent = new ParserAgent(config.geminiApiKey);
+      this.setupEventBusListeners();
+    } else {
+      console.warn('⚠️  Parser Agent not initialized - No Gemini API key provided');
+    }
+
     this.setupEventHandlers();
   }
 
@@ -82,6 +94,126 @@ export class BackgroundService extends EventEmitter {
       const dbGroups = await this.db.getGroups();
       this.emit('groupsUpdated', dbGroups);
     });
+  }
+
+  private setupEventBusListeners() {
+    // Listen for task:created events from Parser Agent
+    eventBus.subscribe('task:created', async (payload) => {
+      try {
+        const { entity, sourceMessage } = payload.data;
+        console.log(`📋 [BackgroundService] Task extracted: ${entity.title}`);
+
+        // Find the project ID for this message's group
+        const groups = await this.db.getGroups();
+        const group = groups.find(g => g.id === sourceMessage.groupId);
+
+        if (!group) {
+          console.error(`❌ Group not found for message: ${sourceMessage.groupId}`);
+          return;
+        }
+
+        // Check if project exists for this group, create if not
+        const projects = await this.db.getProjects({ status: 'active' });
+        let project = projects.find(p => p.whatsappGroupId === group.id);
+
+        if (!project) {
+          // Auto-create project from WhatsApp group
+          const projectId = uuidv4();
+          await this.db.insertProject({
+            id: projectId,
+            name: group.name,
+            whatsappGroupId: group.id,
+            status: 'active',
+            priority: 3,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+          console.log(`📁 Auto-created project: ${group.name}`);
+          project = { id: projectId, name: group.name } as any;
+        }
+
+        // Insert task into database
+        const taskId = uuidv4();
+        await this.db.insertTask({
+          id: taskId,
+          projectId: project.id,
+          title: entity.title,
+          description: entity.description,
+          status: 'todo',
+          priority: entity.priority || 3,
+          ownerPhone: entity.owner,
+          deadline: entity.deadline ? new Date(entity.deadline).getTime() : undefined,
+          extractedFromMessageId: sourceMessage.id,
+          confidenceScore: entity.confidence,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+
+        console.log(`✅ Task stored in database: ${entity.title} (confidence: ${entity.confidence})`);
+      } catch (error) {
+        console.error('❌ Error storing extracted task:', error);
+      }
+    });
+
+    // Listen for risk:identified events from Parser Agent
+    eventBus.subscribe('risk:identified', async (payload) => {
+      try {
+        const { entity, sourceMessage } = payload.data;
+        console.log(`⚠️  [BackgroundService] Risk extracted: ${entity.title}`);
+
+        // Find the project ID for this message's group
+        const groups = await this.db.getGroups();
+        const group = groups.find(g => g.id === sourceMessage.groupId);
+
+        if (!group) {
+          console.error(`❌ Group not found for message: ${sourceMessage.groupId}`);
+          return;
+        }
+
+        // Check if project exists for this group
+        const projects = await this.db.getProjects({ status: 'active' });
+        let project = projects.find(p => p.whatsappGroupId === group.id);
+
+        if (!project) {
+          // Auto-create project from WhatsApp group
+          const projectId = uuidv4();
+          await this.db.insertProject({
+            id: projectId,
+            name: group.name,
+            whatsappGroupId: group.id,
+            status: 'active',
+            priority: 3,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+          console.log(`📁 Auto-created project: ${group.name}`);
+          project = { id: projectId, name: group.name } as any;
+        }
+
+        // Insert risk into database
+        const riskId = uuidv4();
+        await this.db.insertRisk({
+          id: riskId,
+          projectId: project.id,
+          title: entity.title,
+          description: entity.description,
+          severity: entity.severity || 'medium',
+          probability: entity.probability || 'possible',
+          status: 'open',
+          extractedFromMessageId: sourceMessage.id,
+          confidenceScore: entity.confidence,
+          identifiedAt: Date.now(),
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+
+        console.log(`✅ Risk stored in database: ${entity.title} (severity: ${entity.severity}, confidence: ${entity.confidence})`);
+      } catch (error) {
+        console.error('❌ Error storing extracted risk:', error);
+      }
+    });
+
+    console.log('✅ Event bus listeners configured');
   }
 
   private async startWhatsAppService() {
@@ -297,6 +429,15 @@ export class BackgroundService extends EventEmitter {
 
       console.log(`✅ Message stored and emitting messageProcessed event`);
       this.emit('messageProcessed', message);
+
+      // Parse message with Parser Agent if enabled
+      if (this.parserAgent && this.parserAgent.isReady()) {
+        console.log(`🧠 Parsing message with Parser Agent...`);
+        await this.parserAgent.parseMessage(message, {
+          groupName: group.name,
+          projectName: group.name
+        });
+      }
 
       // Check for auto-response trigger
       await this.checkAndRespondToMessage(message, group);
@@ -606,6 +747,14 @@ export class BackgroundService extends EventEmitter {
   setGeminiApiKey(apiKey: string) {
     this.aiService.setApiKey(apiKey);
     this.config.geminiApiKey = apiKey;
+
+    // Update or initialize Parser Agent with new API key
+    if (this.parserAgent) {
+      this.parserAgent.updateApiKey(apiKey);
+    } else {
+      this.parserAgent = new ParserAgent(apiKey);
+      this.setupEventBusListeners();
+    }
   }
 
   async sendMessage(groupId: string, message: string): Promise<boolean> {
@@ -656,5 +805,53 @@ export class BackgroundService extends EventEmitter {
       console.error('Failed to get direct AI answer:', error);
       throw error;
     }
+  }
+
+  // ==================== AIPM PROJECT MANAGEMENT API ====================
+
+  async getProjects(filter?: { status?: string }) {
+    return await this.db.getProjects(filter);
+  }
+
+  async createProject(project: any) {
+    const projectId = uuidv4();
+    await this.db.insertProject({
+      id: projectId,
+      ...project,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    return { id: projectId };
+  }
+
+  async getTasks(filter?: { projectId?: string; status?: string; ownerPhone?: string }) {
+    return await this.db.getTasks(filter);
+  }
+
+  async createTask(task: any) {
+    const taskId = uuidv4();
+    await this.db.insertTask({
+      id: taskId,
+      ...task,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    return { id: taskId };
+  }
+
+  async updateTask(taskId: string, updates: any) {
+    await this.db.updateTask({
+      id: taskId,
+      ...updates
+    });
+    return { success: true };
+  }
+
+  async getRisks(filter?: { projectId?: string }) {
+    return await this.db.getRisks(filter);
+  }
+
+  async getConflicts() {
+    return await this.db.getConflicts();
   }
 }

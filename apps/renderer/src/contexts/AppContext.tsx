@@ -6,7 +6,11 @@ import type {
   Message,
   Milestone,
   AppConfig,
-  SnapshotReport
+  SnapshotReport,
+  Project,
+  Task,
+  Risk,
+  ConflictResolution
 } from '@statuz/shared';
 // Demo data removed - app now requires live backend
 
@@ -50,6 +54,15 @@ interface AppContextType {
   setGeminiApiKey: (apiKey: string) => Promise<void>;
   sendMessage: (groupId: string, message: string) => Promise<boolean>;
   invoke: (type: string, payload?: any) => Promise<any>;
+
+  // ==================== AIPM PROJECT MANAGEMENT ====================
+  getProjects: (filter?: { status?: string }) => Promise<Project[]>;
+  createProject: (project: Partial<Project>) => Promise<{ id: string }>;
+  getTasks: (filter?: { projectId?: string; status?: string; ownerPhone?: string }) => Promise<Task[]>;
+  createTask: (task: Partial<Task>) => Promise<{ id: string }>;
+  updateTask: (taskId: string, updates: Partial<Task>) => Promise<{ success: boolean }>;
+  getRisks: (filter?: { projectId?: string }) => Promise<Risk[]>;
+  getConflicts: () => Promise<ConflictResolution[]>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -472,6 +485,84 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  // ==================== AIPM PROJECT MANAGEMENT ====================
+
+  const getProjects = async (filter?: { status?: string }): Promise<Project[]> => {
+    try {
+      const projects = await invoke('get-projects', filter);
+      return projects;
+    } catch (error) {
+      console.error('Failed to get projects:', error);
+      return [];
+    }
+  };
+
+  const createProject = async (project: Partial<Project>): Promise<{ id: string }> => {
+    try {
+      const result = await invoke('create-project', project);
+      toast.success('Project created successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      toast.error('Failed to create project');
+      throw error;
+    }
+  };
+
+  const getTasks = async (filter?: { projectId?: string; status?: string; ownerPhone?: string }): Promise<Task[]> => {
+    try {
+      const tasks = await invoke('get-tasks', filter);
+      return tasks;
+    } catch (error) {
+      console.error('Failed to get tasks:', error);
+      return [];
+    }
+  };
+
+  const createTask = async (task: Partial<Task>): Promise<{ id: string }> => {
+    try {
+      const result = await invoke('create-task', task);
+      toast.success('Task created successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      toast.error('Failed to create task');
+      throw error;
+    }
+  };
+
+  const updateTask = async (taskId: string, updates: Partial<Task>): Promise<{ success: boolean }> => {
+    try {
+      const result = await invoke('update-task', { taskId, updates });
+      toast.success('Task updated successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      toast.error('Failed to update task');
+      throw error;
+    }
+  };
+
+  const getRisks = async (filter?: { projectId?: string }): Promise<Risk[]> => {
+    try {
+      const risks = await invoke('get-risks', filter);
+      return risks;
+    } catch (error) {
+      console.error('Failed to get risks:', error);
+      return [];
+    }
+  };
+
+  const getConflicts = async (): Promise<ConflictResolution[]> => {
+    try {
+      const conflicts = await invoke('get-conflicts');
+      return conflicts;
+    } catch (error) {
+      console.error('Failed to get conflicts:', error);
+      return [];
+    }
+  };
+
   const value: AppContextType = {
     connectionState,
     groups,
@@ -499,7 +590,15 @@ export function AppProvider({ children }: AppProviderProps) {
     testAIConnection,
     setGeminiApiKey,
     sendMessage,
-    invoke
+    invoke,
+    // AIPM Project Management
+    getProjects,
+    createProject,
+    getTasks,
+    createTask,
+    updateTask,
+    getRisks,
+    getConflicts
   };
 
   return (
