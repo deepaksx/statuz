@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { CREATE_TABLES, CREATE_INDEXES } from './schema.js';
-import type { Group, Message, Milestone } from '@statuz/shared';
+import type { Group, Message, Milestone } from '@aipm/shared';
+import { MigrationRunner } from './migrate.js';
 
 export class StatuzDatabase {
   private db: sqlite3.Database;

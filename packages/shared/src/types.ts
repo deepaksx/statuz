@@ -129,3 +129,177 @@ export interface IpcResponse<T = any> {
   data?: T;
   error?: string;
 }
+// ==================== AIPM - PROJECT MANAGEMENT TYPES ====================
+
+export interface Project {
+  id: string;
+  name: string;
+  code?: string;
+  clientName?: string;
+  whatsappGroupId?: string;
+  status: 'active' | 'on_hold' | 'completed' | 'cancelled';
+  priority: 1 | 2 | 3 | 4; // 1=critical, 4=low
+  slaTier?: 'platinum' | 'gold' | 'silver' | 'bronze';
+  startDate?: number;
+  targetEndDate?: number;
+  actualEndDate?: number;
+  budgetHours?: number;
+  consumedHours?: number;
+  projectManager?: string;
+  technicalLead?: string;
+  description?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Task {
+  id: string;
+  projectId: string;
+  parentTaskId?: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled';
+  priority: 1 | 2 | 3 | 4;
+  ownerPhone?: string;
+  ownerAlias?: string;
+  createdByPhone?: string;
+  createdByAlias?: string;
+  estimatedHours?: number;
+  actualHours?: number;
+  deadline?: number;
+  completedAt?: number;
+  blockerReason?: string;
+  extractedFromMessageId?: string;
+  confidenceScore?: number;
+  tags?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Risk {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  category?: 'technical' | 'resource' | 'schedule' | 'scope' | 'external';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  probability: 'very_likely' | 'likely' | 'possible' | 'unlikely';
+  impact?: string;
+  mitigationPlan?: string;
+  ownerPhone?: string;
+  ownerAlias?: string;
+  status: 'open' | 'monitoring' | 'mitigated' | 'realized' | 'closed';
+  identifiedAt: number;
+  extractedFromMessageId?: string;
+  confidenceScore?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Decision {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  rationale?: string;
+  alternativesConsidered?: string[];
+  impact?: string;
+  decisionMakerPhone?: string;
+  decisionMakerAlias?: string;
+  stakeholders?: string[];
+  status: 'proposed' | 'approved' | 'rejected' | 'implemented';
+  decidedAt?: number;
+  implementedAt?: number;
+  extractedFromMessageId?: string;
+  confidenceScore?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Dependency {
+  id: string;
+  taskId: string;
+  dependsOnTaskId: string;
+  dependencyType: 'finish_to_start' | 'start_to_start' | 'finish_to_finish';
+  lagDays: number;
+  status: 'active' | 'resolved' | 'obsolete';
+  createdAt: number;
+}
+
+export interface Stakeholder {
+  id: string;
+  projectId: string;
+  phoneNumber: string;
+  alias?: string;
+  role?: 'pm' | 'tech_lead' | 'developer' | 'client' | 'sponsor';
+  email?: string;
+  organization?: string;
+  isPrimaryContact: boolean;
+  escalationLevel: number;
+  slaResponseHours?: number;
+  timezone: string;
+  communicationPreference?: 'whatsapp' | 'email' | 'both';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ExecutionNudge {
+  id: string;
+  nudgeType: 'reminder' | 'escalation' | 'status_request' | 'blocker_alert';
+  entityType: 'task' | 'risk' | 'decision' | 'project';
+  entityId: string;
+  recipientPhone: string;
+  messageText: string;
+  scheduledAt: number;
+  sentAt?: number;
+  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  escalationLevel: number;
+  createdAt: number;
+}
+
+export interface ConflictResolution {
+  id: string;
+  conflictType: 'deadline' | 'resource' | 'priority' | 'dependency';
+  description: string;
+  affectedEntities: Array<{ type: string; id: string }>;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  detectedAt: number;
+  resolutionOptions?: string[];
+  chosenResolution?: string;
+  resolvedAt?: number;
+  resolvedByPhone?: string;
+  status: 'open' | 'resolved' | 'acknowledged' | 'ignored';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Report {
+  id: string;
+  reportType: 'daily' | 'weekly' | 'monthly' | 'custom';
+  audience: 'team' | 'client' | 'executive';
+  projectId?: string;
+  periodStart: number;
+  periodEnd: number;
+  generatedAt: number;
+  generatedBy: string;
+  format: 'markdown' | 'json' | 'html';
+  content: string;
+  summary?: string;
+  sentTo?: string[];
+  filePath?: string;
+  createdAt: number;
+}
+
+export interface JiraSyncState {
+  id: string;
+  entityType: 'task' | 'project' | 'risk';
+  localId: string;
+  jiraKey: string;
+  jiraId?: string;
+  lastSyncAt?: number;
+  syncDirection: 'to_jira' | 'from_jira' | 'bidirectional';
+  syncStatus: 'pending' | 'synced' | 'conflict' | 'error';
+  errorMessage?: string;
+  createdAt: number;
+  updatedAt: number;
+}

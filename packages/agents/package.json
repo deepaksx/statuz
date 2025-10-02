@@ -1,0 +1,21 @@
+{
+  "name": "@aipm/agents",
+  "version": "1.0.0",
+  "description": "AI agents for AIPM - Parser, Planner, Tracker, Reporter",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@aipm/shared": "^1.0.0",
+    "@aipm/event-bus": "^1.0.0",
+    "@google/generative-ai": "^0.1.3",
+    "@types/node": "^20.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}
