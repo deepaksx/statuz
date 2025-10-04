@@ -49,7 +49,16 @@ interface AppContextType {
   generateGroupReport: (groupId: string, timeframe?: number) => Promise<any>;
   getGroupMembers: (groupId: string) => Promise<any[]>;
   uploadChatHistory: (groupId: string, content: string) => Promise<{ success: boolean; messagesProcessed: number; messagesInserted: number }>;
-  deleteGroupHistory: (groupId: string) => Promise<{ success: boolean; deletedCount: number }>;
+  deleteGroupHistory: (groupId: string) => Promise<{
+    success: boolean;
+    deletedMessages: number;
+    deletedProjects: number;
+    deletedTasks: number;
+    deletedRisks: number;
+    deletedDecisions: number;
+    deletedDependencies: number;
+    totalDeleted: number;
+  }>;
   chatWithAI: (groupId: string, question: string, apiKey?: string) => Promise<{ answer: string; tokensUsed?: number }>;
   testAIConnection: (apiKey?: string) => Promise<boolean>;
   setGeminiApiKey: (apiKey: string) => Promise<void>;

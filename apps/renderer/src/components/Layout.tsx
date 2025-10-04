@@ -13,7 +13,8 @@ import {
   UserCircle,
   MessageSquare,
   FolderKanban,
-  CheckSquare
+  CheckSquare,
+  ListTree
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import clsx from 'clsx';
@@ -31,6 +32,7 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Dashboard', href: '/', icon: BarChart3 },
     { name: 'Projects', href: '/projects', icon: FolderKanban },
     { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+    { name: 'Backlog', href: '/backlog', icon: ListTree },
     { name: 'Groups', href: '/groups', icon: Users },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Contacts', href: '/contacts', icon: UserCircle },
@@ -145,7 +147,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Footer */}
           <div className="p-4 border-t">
             <div className="text-xs text-gray-500">
-              Statuz v2.1.0
+              Statuz v2.3.3
             </div>
           </div>
         </div>
