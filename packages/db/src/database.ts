@@ -254,26 +254,151 @@ export class StatuzDatabase {
     });
   }
 
-  deleteGroupMessages(groupId: string): Promise<{ deletedCount: number }> {
+  deleteGroupMessages(groupId: string): Promise<{
+    deletedMessages: number;
+    deletedProjects: number;
+    deletedTasks: number;
+    deletedRisks: number;
+    deletedDecisions: number;
+    deletedDependencies: number;
+  }> {
     return new Promise((resolve, reject) => {
-      this.db.run(
-        'DELETE FROM messages WHERE group_id = ?',
-        [groupId],
-        function(err) {
-          if (err) reject(err);
-          else {
-            // Also reset the history upload flag for the group
-            this.run(
-              'UPDATE groups SET has_history_uploaded = 0, history_uploaded_at = NULL WHERE id = ?',
-              [groupId],
-              (updateErr: Error | null) => {
-                if (updateErr) console.warn('Failed to reset history flag:', updateErr);
-              }
-            );
-            resolve({ deletedCount: this.changes });
+      const counts = {
+        deletedMessages: 0,
+        deletedProjects: 0,
+        deletedTasks: 0,
+        deletedRisks: 0,
+        deletedDecisions: 0,
+        deletedDependencies: 0
+      };
+
+      // Start transaction for atomic deletion
+      this.db.serialize(() => {
+        this.db.run('BEGIN TRANSACTION', (err) => {
+          if (err) {
+            reject(err);
+            return;
           }
-        }
-      );
+
+          // 1. Delete dependencies for tasks from this group
+          this.db.run(
+            `DELETE FROM dependencies WHERE task_id IN (
+              SELECT id FROM tasks WHERE extracted_from_message_id IN (
+                SELECT id FROM messages WHERE group_id = ?
+              )
+            )`,
+            [groupId],
+            function(err) {
+              if (err) {
+                console.error('Error deleting dependencies:', err);
+              } else {
+                counts.deletedDependencies = this.changes;
+                console.log(`🗑️  Deleted ${counts.deletedDependencies} dependencies`);
+              }
+            }
+          );
+
+          // 2. Delete tasks extracted from messages in this group
+          this.db.run(
+            `DELETE FROM tasks WHERE extracted_from_message_id IN (
+              SELECT id FROM messages WHERE group_id = ?
+            )`,
+            [groupId],
+            function(err) {
+              if (err) {
+                console.error('Error deleting tasks:', err);
+              } else {
+                counts.deletedTasks = this.changes;
+                console.log(`🗑️  Deleted ${counts.deletedTasks} tasks`);
+              }
+            }
+          );
+
+          // 3. Delete risks extracted from messages in this group
+          this.db.run(
+            `DELETE FROM risks WHERE extracted_from_message_id IN (
+              SELECT id FROM messages WHERE group_id = ?
+            )`,
+            [groupId],
+            function(err) {
+              if (err) {
+                console.error('Error deleting risks:', err);
+              } else {
+                counts.deletedRisks = this.changes;
+                console.log(`🗑️  Deleted ${counts.deletedRisks} risks`);
+              }
+            }
+          );
+
+          // 4. Delete decisions extracted from messages in this group
+          this.db.run(
+            `DELETE FROM decisions WHERE extracted_from_message_id IN (
+              SELECT id FROM messages WHERE group_id = ?
+            )`,
+            [groupId],
+            function(err) {
+              if (err) {
+                console.error('Error deleting decisions:', err);
+              } else {
+                counts.deletedDecisions = this.changes;
+                console.log(`🗑️  Deleted ${counts.deletedDecisions} decisions`);
+              }
+            }
+          );
+
+          // 5. Delete projects associated with this group
+          this.db.run(
+            'DELETE FROM projects WHERE group_id = ?',
+            [groupId],
+            function(err) {
+              if (err) {
+                console.error('Error deleting projects:', err);
+              } else {
+                counts.deletedProjects = this.changes;
+                console.log(`🗑️  Deleted ${counts.deletedProjects} projects`);
+              }
+            }
+          );
+
+          // 6. Delete messages from this group
+          this.db.run(
+            'DELETE FROM messages WHERE group_id = ?',
+            [groupId],
+            function(err) {
+              if (err) {
+                console.error('Error deleting messages:', err);
+              } else {
+                counts.deletedMessages = this.changes;
+                console.log(`🗑️  Deleted ${counts.deletedMessages} messages`);
+              }
+            }
+          );
+
+          // 7. Reset the history upload flag for the group
+          this.db.run(
+            'UPDATE groups SET has_history_uploaded = 0, history_uploaded_at = NULL WHERE id = ?',
+            [groupId],
+            (updateErr: Error | null) => {
+              if (updateErr) {
+                console.error('Failed to reset history flag:', updateErr);
+              } else {
+                console.log(`✅ Reset history upload flag for group`);
+              }
+            }
+          );
+
+          // Commit transaction
+          this.db.run('COMMIT', (err) => {
+            if (err) {
+              this.db.run('ROLLBACK');
+              reject(err);
+            } else {
+              console.log(`✅ Successfully deleted all data for group ${groupId}`);
+              resolve(counts);
+            }
+          });
+        });
+      });
     });
   }
 

@@ -192,14 +192,38 @@ export function Groups() {
   };
 
   const handleDeleteHistory = async (groupId: string, groupName: string) => {
-    if (!confirm(`Are you sure you want to delete all chat history for "${groupName}"? This cannot be undone.`)) {
+    const confirmMessage = `⚠️ WARNING: This will delete ALL data for "${groupName}":\n\n` +
+      `• All messages\n` +
+      `• All projects\n` +
+      `• All tasks (including Epic/Story/Task/Subtask)\n` +
+      `• All risks\n` +
+      `• All decisions\n` +
+      `• All dependencies\n\n` +
+      `This action CANNOT be undone!\n\n` +
+      `You can re-upload chat history to extract everything fresh.\n\n` +
+      `Continue with deletion?`;
+
+    if (!confirm(confirmMessage)) {
       return;
     }
+
     try {
-      toast.loading('Deleting chat history...');
+      toast.loading('Deleting all group data...', { duration: Infinity });
       const result = await deleteGroupHistory(groupId);
       toast.dismiss();
-      toast.success(`Deleted ${result.deletedCount} messages`);
+
+      // Show detailed deletion summary
+      const summary = `✅ Successfully deleted all data:\n` +
+        `📧 Messages: ${result.deletedMessages}\n` +
+        `📁 Projects: ${result.deletedProjects}\n` +
+        `✅ Tasks: ${result.deletedTasks}\n` +
+        `⚠️ Risks: ${result.deletedRisks}\n` +
+        `🎯 Decisions: ${result.deletedDecisions}\n` +
+        `🔗 Dependencies: ${result.deletedDependencies}\n` +
+        `\n🗑️ Total: ${result.totalDeleted} items deleted`;
+
+      toast.success(summary, { duration: 5000 });
+
       if (expandedGroup === groupId) {
         setExpandedGroup(null);
         setGroupHistory(prev => {
@@ -210,7 +234,7 @@ export function Groups() {
       }
     } catch (error) {
       toast.dismiss();
-      toast.error('Failed to delete chat history');
+      toast.error('Failed to delete group data');
       console.error('Delete history error:', error);
     }
   };

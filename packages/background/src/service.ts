@@ -654,12 +654,26 @@ export class BackgroundService extends EventEmitter {
 
   async deleteGroupHistory(groupId: string) {
     try {
-      console.log(`🗑️  Deleting chat history for group: ${groupId}`);
+      console.log(`🗑️  Deleting ALL data for group: ${groupId}`);
+      console.log(`   This will delete: messages, projects, tasks, risks, decisions, dependencies`);
 
       const result = await this.db.deleteGroupMessages(groupId);
-      console.log(`✅ Deleted ${result.deletedCount} messages`);
 
-      this.db.auditLog('CHAT_HISTORY_DELETED', `Deleted ${result.deletedCount} messages for group ${groupId}`);
+      console.log(`✅ Deletion complete:`);
+      console.log(`   📧 Messages: ${result.deletedMessages}`);
+      console.log(`   📁 Projects: ${result.deletedProjects}`);
+      console.log(`   ✅ Tasks: ${result.deletedTasks}`);
+      console.log(`   ⚠️  Risks: ${result.deletedRisks}`);
+      console.log(`   🎯 Decisions: ${result.deletedDecisions}`);
+      console.log(`   🔗 Dependencies: ${result.deletedDependencies}`);
+
+      const totalDeleted = result.deletedMessages + result.deletedProjects + result.deletedTasks +
+                          result.deletedRisks + result.deletedDecisions + result.deletedDependencies;
+
+      this.db.auditLog(
+        'CHAT_HISTORY_DELETED',
+        `Deleted all data for group ${groupId}: ${result.deletedMessages} messages, ${result.deletedProjects} projects, ${result.deletedTasks} tasks, ${result.deletedRisks} risks, ${result.deletedDecisions} decisions, ${result.deletedDependencies} dependencies`
+      );
 
       // Emit event to refresh groups in UI
       const groups = await this.db.getGroups();
@@ -667,10 +681,11 @@ export class BackgroundService extends EventEmitter {
 
       return {
         success: true,
-        deletedCount: result.deletedCount
+        ...result,
+        totalDeleted
       };
     } catch (error) {
-      console.error('❌ Failed to delete chat history:', error);
+      console.error('❌ Failed to delete group data:', error);
       throw error;
     }
   }

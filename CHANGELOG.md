@@ -2,6 +2,97 @@
 
 All notable changes to Statuz will be documented in this file.
 
+## [2.3.1] - 2025-01-10
+
+### 🔥 Critical Enhancement - Complete History Reset
+
+#### Complete Data Deletion
+- **Delete History now removes EVERYTHING** - not just messages
+- When you delete history for a group, it now deletes:
+  - ✅ All messages
+  - ✅ All projects
+  - ✅ All tasks (Epic, Story, Task, Subtask)
+  - ✅ All risks
+  - ✅ All decisions
+  - ✅ All dependencies
+- This allows you to **start completely fresh** when re-uploading chat history
+
+#### Enhanced User Experience
+- **Detailed confirmation dialog** warns about complete deletion
+- **Comprehensive deletion summary** shows exactly what was removed:
+  ```
+  📧 Messages: 187
+  📁 Projects: 2
+  ✅ Tasks: 45
+  ⚠️ Risks: 12
+  🎯 Decisions: 8
+  🔗 Dependencies: 3
+  🗑️ Total: 257 items deleted
+  ```
+- **Transaction-based deletion** - all-or-nothing (prevents partial deletions)
+- **Detailed console logging** for debugging
+
+#### Technical Improvements
+- Database transaction ensures atomic deletion
+- Cascading delete order prevents foreign key violations:
+  1. Dependencies (references tasks)
+  2. Tasks (references messages)
+  3. Risks (references messages)
+  4. Decisions (references messages)
+  5. Projects (references group)
+  6. Messages
+  7. Group history flags reset
+- Improved error handling with rollback on failure
+- Audit log entries include full deletion counts
+
+#### Use Case
+Perfect for testing or when you want to re-extract everything with updated AI:
+1. Click "Delete History" on a group
+2. Confirm the deletion (see warning about what will be deleted)
+3. Everything gets wiped clean
+4. Re-upload chat history
+5. AI extracts fresh with latest v2.3.0 SAP expertise and SCRUM classification
+
+### 📊 Example Output
+
+**Console Log:**
+```
+🗑️  Deleting ALL data for group: NXSYS SAP Team
+   This will delete: messages, projects, tasks, risks, decisions, dependencies
+✅ Deletion complete:
+   📧 Messages: 187
+   📁 Projects: 2
+   ✅ Tasks: 45
+   ⚠️ Risks: 12
+   🎯 Decisions: 8
+   🔗 Dependencies: 3
+✅ Reset history upload flag for group
+✅ Successfully deleted all data for group
+```
+
+**Frontend Toast:**
+```
+✅ Successfully deleted all data:
+📧 Messages: 187
+📁 Projects: 2
+✅ Tasks: 45
+⚠️ Risks: 12
+🎯 Decisions: 8
+🔗 Dependencies: 3
+
+🗑️ Total: 257 items deleted
+```
+
+### 🐛 Bug Fixes
+- Fixed incomplete deletion leaving orphaned projects/tasks
+- Fixed foreign key constraint errors during deletion
+- Fixed group history flag not resetting properly
+
+### ⚠️ Breaking Changes
+None. This is an enhancement to existing delete functionality.
+
+---
+
 ## [2.3.0] - 2025-01-10
 
 ### 🚀 Major Features - SAP-Powered SCRUM Project Management
