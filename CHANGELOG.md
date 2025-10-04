@@ -2,6 +2,37 @@
 
 All notable changes to Statuz will be documented in this file.
 
+## [2.2.1] - 2025-01-10
+
+### 🐛 Critical Bug Fix
+
+#### Parser Agent JSON Parsing
+- **CRITICAL FIX**: Parser Agent now correctly parses JSON responses wrapped in markdown code blocks
+- Gemini API was returning responses like ` ```json {...} ``` ` instead of pure JSON
+- Added regex to strip markdown code blocks before JSON.parse()
+- This fixes the issue where uploaded chat history wasn't extracting projects/tasks
+- All entities are now properly extracted and saved to database
+
+**Impact**: This was preventing all AI extraction from working. Users uploading chat history would see "Failed to parse JSON response" errors and no projects/tasks would be created.
+
+**Fix**: Added markdown stripping logic in parser-agent.ts:
+```typescript
+const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+if (codeBlockMatch) {
+  text = codeBlockMatch[1].trim();
+}
+```
+
+### 📊 Testing
+
+Verified with actual WhatsApp chat export:
+- ✅ Tasks extracted correctly
+- ✅ Risks identified properly
+- ✅ Owners assigned accurately
+- ✅ Projects populated in database
+
+---
+
 ## [2.2.0] - 2025-01-10
 
 ### 🎉 New Features

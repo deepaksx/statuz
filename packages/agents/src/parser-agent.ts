@@ -224,7 +224,13 @@ Extract entities (return JSON only):`;
 
       const result = await this.model.generateContent(fullPrompt);
       const response = await result.response;
-      const text = response.text();
+      let text = response.text();
+
+      // Strip markdown code blocks if present (```json ... ```)
+      const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        text = codeBlockMatch[1].trim();
+      }
 
       let parsed: ParseResult;
       try {
