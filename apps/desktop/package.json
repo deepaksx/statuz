@@ -7,8 +7,8 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@aipm/shared": "^1.0.0",
-    "@aipm/background": "^1.0.0",
+    "@aipm/shared": "*",
+    "@aipm/background": "*",
     "electron": "^27.0.0"
   },
   "devDependencies": {

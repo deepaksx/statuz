@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { Message } from '@statuz/shared';
+import type { Message } from '@aipm/shared';
 
 export interface AIChatMessage {
   role: 'user' | 'model';
@@ -43,8 +43,8 @@ export class AIService {
       throw new Error('AI service not configured. Please provide an API key.');
     }
 
-    // Use Gemini 2.5 Flash for fast responses
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    // Use Gemini 2.5 Flash Lite for fast responses
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     // Build context from group messages if provided
     let contextText = '';
@@ -106,7 +106,7 @@ Please provide a helpful and concise answer based on the context provided.`;
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
       const result = await model.generateContent('Hello, this is a test. Please respond with "OK".');
       const response = result.response;
       return response.text().length > 0;

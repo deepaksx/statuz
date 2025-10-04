@@ -1,5 +1,5 @@
-import type { SnapshotReport, Milestone } from '@statuz/shared';
-import type { StatuzDatabase } from '@statuz/db';
+import type { SnapshotReport, Milestone } from '@aipm/shared';
+import type { StatuzDatabase } from '@aipm/db';
 
 export class SnapshotGenerator {
   constructor(private db: StatuzDatabase) {}

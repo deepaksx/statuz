@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, Eye, EyeOff, Users, MessageSquare, ChevronDown, ChevronUp, Calendar, User, ArrowDown, Upload, FileText, Edit, Save, X, Info, BarChart3, TrendingUp, AlertTriangle, CheckCircle, Cpu, CheckSquare, Bot, Send, UserPlus, Plus, Copy, Check } from 'lucide-react';
+import { RefreshCw, Eye, EyeOff, Users, MessageSquare, ChevronDown, ChevronUp, Calendar, User, ArrowDown, Upload, FileText, Edit, Save, X, Info, BarChart3, TrendingUp, AlertTriangle, CheckCircle, Cpu, CheckSquare, Bot, Send, UserPlus, Plus, Copy, Check, Trash2 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { format } from 'date-fns';
 import clsx from 'clsx';
@@ -27,6 +27,7 @@ export function Groups() {
     generateGroupReport,
     getGroupMembers,
     getMessages,
+    deleteGroupHistory,
     config,
     chatWithAI,
     sendMessage,
@@ -188,6 +189,30 @@ export function Groups() {
       loadGroupHistory(expandedGroup, 0);
     }
     setShowUploadModal(null);
+  };
+
+  const handleDeleteHistory = async (groupId: string, groupName: string) => {
+    if (!confirm(`Are you sure you want to delete all chat history for "${groupName}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      toast.loading('Deleting chat history...');
+      const result = await deleteGroupHistory(groupId);
+      toast.dismiss();
+      toast.success(`Deleted ${result.deletedCount} messages`);
+      if (expandedGroup === groupId) {
+        setExpandedGroup(null);
+        setGroupHistory(prev => {
+          const newHistory = { ...prev };
+          delete newHistory[groupId];
+          return newHistory;
+        });
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Failed to delete chat history');
+      console.error('Delete history error:', error);
+    }
   };
 
   const maskAuthor = (author: string, authorName: string) => {
@@ -697,6 +722,20 @@ export function Groups() {
                       <Upload className="h-4 w-4 mr-1" />
                       Upload History
                     </button>
+
+                    {group.hasHistoryUploaded && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteHistory(group.id, group.name);
+                        }}
+                        className="btn btn-sm btn-error"
+                        title="Delete chat history"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete History
+                      </button>
+                    )}
 
                     {group.isWatched && (
                       <button

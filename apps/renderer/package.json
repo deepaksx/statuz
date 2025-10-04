@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@aipm/shared": "^1.0.0",
+    "@aipm/shared": "*",
     "@tailwindcss/typography": "^0.5.19",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",

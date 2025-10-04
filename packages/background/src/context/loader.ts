@@ -1,8 +1,8 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import YAML from 'yaml';
-import type { ProjectContext } from '@statuz/shared';
-import { ProjectContextSchema } from '@statuz/shared';
+import type { ProjectContext } from '@aipm/shared';
+import { ProjectContextSchema } from '@aipm/shared';
 
 export class ContextLoader {
   private contextPath: string;

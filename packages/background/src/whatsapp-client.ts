@@ -3,7 +3,7 @@ const require = createRequire(import.meta.url);
 const { Client, LocalAuth } = require('whatsapp-web.js');
 import QRCode from 'qrcode-terminal';
 import { EventEmitter } from 'events';
-import type { WhatsAppConnectionState, Group, Message } from '@statuz/shared';
+import type { WhatsAppConnectionState, Group, Message } from '@aipm/shared';
 
 // Event constants
 const Events = {
@@ -55,7 +55,14 @@ export class WhatsAppClient extends EventEmitter {
   private setupEventHandlers() {
     this.client.on(Events.QR_RECEIVED, (qr: string) => {
       this.updateConnectionState({ status: 'QR_REQUIRED', qrCode: qr });
-      QRCode.generate(qr, { small: true });
+      try {
+        QRCode.generate(qr, { small: true });
+      } catch (error) {
+        // Ignore EPIPE errors in Electron when console is not available
+        if ((error as any).code !== 'EPIPE') {
+          console.error('Failed to generate QR code in terminal:', error);
+        }
+      }
     });
 
     this.client.on(Events.AUTHENTICATED, () => {

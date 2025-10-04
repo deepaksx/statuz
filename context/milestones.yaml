@@ -1,0 +1,7 @@
+milestones:
+  - id: "SETUP"
+    title: "Initial Setup"
+    description: "Get Statuz running"
+    owner: "Team"
+    dueDate: "2024-12-31"
+    acceptanceCriteria: "App is connected to WhatsApp"

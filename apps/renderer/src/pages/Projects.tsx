@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import type { Project, Task } from '@statuz/shared';
+import type { Project } from '@aipm/shared';
 
 export default function Projects() {
   const { getProjects, getTasks } = useApp();

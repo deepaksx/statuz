@@ -31,7 +31,7 @@ export interface ParseResult {
  * - Dependencies (task relationships)
  */
 export class ParserAgent {
-  private genAI: GoogleGenerativeAI;
+  private genAI!: GoogleGenerativeAI;
   private model: any;
   private isEnabled: boolean = false;
 
@@ -44,13 +44,12 @@ export class ParserAgent {
 
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.1, // Low temp for structured extraction
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 2048,
-        responseMimeType: "application/json"
+        maxOutputTokens: 2048
       }
     });
     this.isEnabled = true;
@@ -326,13 +325,12 @@ Extract entities (return JSON only):`;
 
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.1,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 2048,
-        responseMimeType: "application/json"
+        maxOutputTokens: 2048
       }
     });
     this.isEnabled = true;

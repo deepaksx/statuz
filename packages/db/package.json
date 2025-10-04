@@ -5,11 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('src/migrations', 'dist/migrations', {recursive: true})\"",
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@aipm/shared": "^1.0.0",
+    "@aipm/shared": "*",
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {

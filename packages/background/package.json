@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@aipm/db": "^1.0.0",
-    "@aipm/shared": "^1.0.0",
+    "@aipm/db": "*",
+    "@aipm/shared": "*",
     "bullmq": "^4.15.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",

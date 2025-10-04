@@ -1,23 +1,28 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import { join } from 'path';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import type { AppConfig, IpcMessage, IpcResponse } from '@statuz/shared' with { 'resolution-mode': 'import' };
+import type { AppConfig, IpcMessage, IpcResponse } from '@aipm/shared' with { 'resolution-mode': 'import' };
 
 // __dirname is available in CommonJS
 
 class StatuzApp {
   private mainWindow: BrowserWindow | null = null;
   private backgroundService: any | null = null;
+  private backgroundServiceReady: Promise<void>;
+  private resolveBackgroundServiceReady!: () => void;
   private config: AppConfig;
 
   constructor() {
+    this.backgroundServiceReady = new Promise((resolve) => {
+      this.resolveBackgroundServiceReady = resolve;
+    });
     this.config = this.loadConfig();
     this.setupApp();
   }
 
   private async saveConfigToDatabase(key: string, value: string): Promise<void> {
-    // Import StatuzDatabase class from @statuz/db
-    const { StatuzDatabase } = await import('@statuz/db');
+    // Import StatuzDatabase class from @aipm/db
+    const { StatuzDatabase } = await import('@aipm/db');
     const dbPath = join(this.config.dataDirectory, 'statuz.db');
     const db = new StatuzDatabase(dbPath);
 
@@ -50,7 +55,7 @@ class StatuzApp {
 
   private async loadApiKeyAsync(dataDirectory: string) {
     try {
-      const { StatuzDatabase } = await import('@statuz/db');
+      const { StatuzDatabase } = await import('@aipm/db');
       const dbPath = join(dataDirectory, 'statuz.db');
       const db = new StatuzDatabase(dbPath);
       const geminiApiKey = await db.getConfig('geminiApiKey');
@@ -117,14 +122,16 @@ class StatuzApp {
       height: 800,
       minWidth: 800,
       minHeight: 600,
+      center: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: join(__dirname, 'preload.js')
       },
       titleBarStyle: 'default',
-      show: true,
-      backgroundColor: '#1a1a1a'
+      show: false,
+      backgroundColor: '#1a1a1a',
+      alwaysOnTop: true
     });
 
     // Check if production build exists
@@ -158,11 +165,17 @@ class StatuzApp {
       // Don't open DevTools in production
     }
 
-    // Show window when ready (backup, already shown above)
+    // Show window when ready
     this.mainWindow.once('ready-to-show', () => {
       console.log('✅ Window ready to show');
+      this.mainWindow?.center();
       this.mainWindow?.show();
       this.mainWindow?.focus();
+      this.mainWindow?.moveTop();
+      // Disable always-on-top after showing
+      setTimeout(() => {
+        this.mainWindow?.setAlwaysOnTop(false);
+      }, 1000);
     });
 
     // Handle window closed
@@ -224,6 +237,9 @@ class StatuzApp {
   }
 
   private async handleIpcMessage(message: IpcMessage): Promise<any> {
+    // Wait for background service to be ready
+    await this.backgroundServiceReady;
+
     if (!this.backgroundService) {
       throw new Error('Background service not initialized');
     }
@@ -257,6 +273,10 @@ class StatuzApp {
       case 'upload-chat-history':
         const { groupId: uploadGroupId, content } = message.payload;
         return await this.backgroundService.uploadChatHistory(uploadGroupId, content);
+
+      case 'delete-group-history':
+        const { groupId: deleteHistoryGroupId } = message.payload;
+        return await this.backgroundService.deleteGroupHistory(deleteHistoryGroupId);
 
       case 'get-milestones':
         return await this.backgroundService.getMilestones();
@@ -382,6 +402,10 @@ class StatuzApp {
 
       case 'restart-service':
         await this.backgroundService.stop();
+        // Create new promise for the restarted service
+        this.backgroundServiceReady = new Promise((resolve) => {
+          this.resolveBackgroundServiceReady = resolve;
+        });
         await this.initializeBackgroundService();
         return { restarted: true };
 
@@ -396,7 +420,7 @@ class StatuzApp {
     }
 
     // Use dynamic import for ES module
-    const { BackgroundService } = await import('@statuz/background');
+    const { BackgroundService } = await import('@aipm/background');
     this.backgroundService = new BackgroundService(this.config);
 
     // Forward events to renderer
@@ -419,6 +443,9 @@ class StatuzApp {
     this.backgroundService.on('error', (error: any) => {
       this.sendToRenderer('service-error', { message: error.message, stack: error.stack });
     });
+
+    // Mark service as ready before starting
+    this.resolveBackgroundServiceReady();
 
     // Start the service (non-blocking)
     console.log('🔄 Starting WhatsApp service...');

@@ -254,6 +254,29 @@ export class StatuzDatabase {
     });
   }
 
+  deleteGroupMessages(groupId: string): Promise<{ deletedCount: number }> {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'DELETE FROM messages WHERE group_id = ?',
+        [groupId],
+        function(err) {
+          if (err) reject(err);
+          else {
+            // Also reset the history upload flag for the group
+            this.run(
+              'UPDATE groups SET has_history_uploaded = 0, history_uploaded_at = NULL WHERE id = ?',
+              [groupId],
+              (updateErr: Error | null) => {
+                if (updateErr) console.warn('Failed to reset history flag:', updateErr);
+              }
+            );
+            resolve({ deletedCount: this.changes });
+          }
+        }
+      );
+    });
+  }
+
 
 
   // Milestones

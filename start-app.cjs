@@ -106,7 +106,8 @@ setTimeout(() => {
   const electron = spawn('npm', ['run', 'dev:electron'], {
     cwd: __dirname,
     stdio: 'inherit',
-    shell: true
+    shell: true,
+    env: { ...process.env, NODE_ENV: 'development' }
   });
 
   electron.on('close', (code) => {

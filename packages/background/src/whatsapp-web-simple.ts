@@ -1,6 +1,6 @@
 // Simplified WhatsApp Web integration that doesn't require native modules
 import { EventEmitter } from 'events';
-import type { WhatsAppConnectionState, Group, Message } from '@statuz/shared';
+import type { WhatsAppConnectionState, Group, Message } from '@aipm/shared';
 
 export interface WhatsAppWebSimpleEvents {
   connectionStateChanged: (state: WhatsAppConnectionState) => void;

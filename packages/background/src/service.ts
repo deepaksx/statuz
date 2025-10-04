@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
-import { StatuzDatabase } from '@statuz/db';
+import { StatuzDatabase } from '@aipm/db';
 import { WhatsAppClient } from './whatsapp-client.js';
 import { WhatsAppWebSimple } from './whatsapp-web-simple.js';
 import { ContextLoader } from './context/loader.js';
@@ -16,7 +16,7 @@ import type {
   ProjectContext,
   SnapshotReport,
   AppConfig
-} from '@statuz/shared';
+} from '@aipm/shared';
 import { eventBus } from '@aipm/event-bus';
 import { ParserAgent } from '@aipm/agents';
 import { v4 as uuidv4 } from 'uuid';
@@ -136,7 +136,7 @@ export class BackgroundService extends EventEmitter {
         const taskId = uuidv4();
         await this.db.insertTask({
           id: taskId,
-          projectId: project.id,
+          projectId: project!.id,
           title: entity.title,
           description: entity.description,
           status: 'todo',
@@ -194,7 +194,7 @@ export class BackgroundService extends EventEmitter {
         const riskId = uuidv4();
         await this.db.insertRisk({
           id: riskId,
-          projectId: project.id,
+          projectId: project!.id,
           title: entity.title,
           description: entity.description,
           severity: entity.severity || 'medium',
@@ -583,7 +583,16 @@ export class BackgroundService extends EventEmitter {
       const parsedMessages = parseWhatsAppChat(content);
       console.log(`✅ Parsed ${parsedMessages.length} messages`);
 
+      // Get group info
+      const groups = await this.db.getGroups();
+      const group = groups.find(g => g.id === groupId);
+
+      if (!group) {
+        throw new Error(`Group ${groupId} not found`);
+      }
+
       let messagesInserted = 0;
+      let messagesParsed = 0;
 
       // Insert each message into database
       for (const parsed of parsedMessages) {
@@ -600,29 +609,68 @@ export class BackgroundService extends EventEmitter {
         const inserted = await this.db.insertMessage(message);
         if (inserted) {
           messagesInserted++;
+
+          // Process message with Parser Agent if group is watched and agent is ready
+          if (group.isWatched && this.parserAgent && this.parserAgent.isReady()) {
+            try {
+              await this.parserAgent.parseMessage(message, {
+                groupName: group.name,
+                projectName: group.name
+              });
+              messagesParsed++;
+            } catch (parseError) {
+              console.error(`Failed to parse message ${message.id}:`, parseError);
+              // Continue processing other messages even if one fails
+            }
+          }
         }
       }
 
       console.log(`💾 Inserted ${messagesInserted} messages into database`);
+      console.log(`🧠 Parsed ${messagesParsed} messages with AI`);
 
       // Mark group as having history uploaded
       const updated = await this.db.updateGroupHistoryStatus(groupId, true);
       console.log(`📊 Updated group history status: ${updated}`);
 
-      this.db.auditLog('CHAT_HISTORY_UPLOADED', `Uploaded ${messagesInserted} messages for group ${groupId}`);
+      this.db.auditLog('CHAT_HISTORY_UPLOADED', `Uploaded ${messagesInserted} messages (${messagesParsed} parsed) for group ${groupId}`);
 
       // Emit event to refresh groups in UI
-      const groups = await this.db.getGroups();
-      this.emit('groupsUpdated', groups);
+      const updatedGroups = await this.db.getGroups();
+      this.emit('groupsUpdated', updatedGroups);
       console.log(`🔄 Emitted groupsUpdated event`);
 
       return {
         success: true,
         messagesProcessed: parsedMessages.length,
-        messagesInserted
+        messagesInserted,
+        messagesParsed
       };
     } catch (error) {
       console.error('❌ Failed to upload chat history:', error);
+      throw error;
+    }
+  }
+
+  async deleteGroupHistory(groupId: string) {
+    try {
+      console.log(`🗑️  Deleting chat history for group: ${groupId}`);
+
+      const result = await this.db.deleteGroupMessages(groupId);
+      console.log(`✅ Deleted ${result.deletedCount} messages`);
+
+      this.db.auditLog('CHAT_HISTORY_DELETED', `Deleted ${result.deletedCount} messages for group ${groupId}`);
+
+      // Emit event to refresh groups in UI
+      const groups = await this.db.getGroups();
+      this.emit('groupsUpdated', groups);
+
+      return {
+        success: true,
+        deletedCount: result.deletedCount
+      };
+    } catch (error) {
+      console.error('❌ Failed to delete chat history:', error);
       throw error;
     }
   }
@@ -796,7 +844,7 @@ export class BackgroundService extends EventEmitter {
       // Use the AI service to get a direct answer without context
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(apiKey || this.config.geminiApiKey || '');
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
       const result = await model.generateContent(question);
       const response = await result.response;

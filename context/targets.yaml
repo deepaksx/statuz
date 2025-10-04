@@ -1,0 +1,5 @@
+targets:
+  kpis:
+    - name: "Weekly Updates"
+      target: "1 per week"
+      deadline: "2024-12-31"

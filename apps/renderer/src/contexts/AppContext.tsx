@@ -11,7 +11,7 @@ import type {
   Task,
   Risk,
   ConflictResolution
-} from '@statuz/shared';
+} from '@aipm/shared';
 // Demo data removed - app now requires live backend
 
 interface AppContextType {
@@ -49,6 +49,7 @@ interface AppContextType {
   generateGroupReport: (groupId: string, timeframe?: number) => Promise<any>;
   getGroupMembers: (groupId: string) => Promise<any[]>;
   uploadChatHistory: (groupId: string, content: string) => Promise<{ success: boolean; messagesProcessed: number; messagesInserted: number }>;
+  deleteGroupHistory: (groupId: string) => Promise<{ success: boolean; deletedCount: number }>;
   chatWithAI: (groupId: string, question: string, apiKey?: string) => Promise<{ answer: string; tokensUsed?: number }>;
   testAIConnection: (apiKey?: string) => Promise<boolean>;
   setGeminiApiKey: (apiKey: string) => Promise<void>;
@@ -441,6 +442,17 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  const deleteGroupHistory = async (groupId: string) => {
+    try {
+      const result = await invoke('delete-group-history', { groupId });
+      await refreshGroups(); // Refresh groups to update UI
+      return result;
+    } catch (error) {
+      console.error('Failed to delete group history:', error);
+      throw error;
+    }
+  };
+
   const chatWithAI = async (groupId: string, question: string, apiKey?: string) => {
     try {
       const result = await invoke('ai-chat', { groupId, question, apiKey });
@@ -586,6 +598,7 @@ export function AppProvider({ children }: AppProviderProps) {
     generateGroupReport,
     getGroupMembers,
     uploadChatHistory,
+    deleteGroupHistory,
     chatWithAI,
     testAIConnection,
     setGeminiApiKey,

@@ -13,7 +13,7 @@ import { useApp } from '../contexts/AppContext';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import { TestConnection } from '../components/TestConnection';
-import type { SnapshotReport } from '@statuz/shared';
+import type { SnapshotReport } from '@aipm/shared';
 import { QRCodeSVG } from 'qrcode.react';
 
 export function Dashboard() {
