@@ -2,6 +2,71 @@
 
 All notable changes to Statuz will be documented in this file.
 
+## [2.3.2] - 2025-01-10
+
+### 🎨 UI Enhancement - SCRUM Hierarchy & SAP Fields Visible!
+
+Now you can **SEE** the Epic/Story/Task/Subtask classification and SAP fields in the Tasks UI!
+
+#### Visual SCRUM Hierarchy
+- **Work Item Type Badges** with color coding:
+  - 🟣 **Epic** - Purple badge for strategic initiatives
+  - 🔵 **Story** - Blue badge with story points (e.g., "Story (5)")
+  - 🟢 **Task** - Green badge for technical work
+  - ⚪ **Subtask** - Gray badge for small units
+- Story points displayed next to Story badges
+
+#### SAP Field Display
+- **📦 SAP Module** badge (FI, CO, MM, SD, PP, QM, PM, HR, ABAP, BASIS, BW)
+- **🔧 Transaction Code** badge (VA01, ME21N, FB50, ST22, SE80, etc.)
+- **🚚 Transport Request** badge (P01K905013, D01K123456, etc.)
+
+#### AI Recommendations
+- **🤖 Expandable AI Recommendation** section
+- Click to reveal AI-generated expert suggestions
+- Shows SAP-specific guidance and best practices
+
+#### Updated TypeScript Types
+- Added all SCRUM fields to Task interface:
+  - `workItemType`, `storyPoints`, `sprintId`, `sprintName`
+  - `acceptanceCriteria`, `progressPercentage`
+  - `dependenciesCount`, `blockersCount`
+- Added all SAP fields to Task interface:
+  - `sapModule`, `sapTcode`, `sapObjectType`, `sapTransportRequest`
+- Added all AI fields to Task interface:
+  - `aiRecommendation`, `aiRiskAssessment`, `aiSimilarIssues`, `aiConfidenceLevel`
+
+### Example Task Card
+
+**Before v2.3.2:**
+```
+[High] Import TR to production
+Owner: Adeel
+```
+
+**After v2.3.2:**
+```
+[Task] [High] Import TR P01K905013 to PRD
+📦 SD  🔧 STMS  🚚 P01K905013
+Owner: Adeel
+🤖 AI Recommendation ▼
+  Verify transport layer, check dependent objects,
+  test in QA first. Use STMS_IMPORT to import...
+```
+
+### Files Modified
+- `packages/shared/src/types.ts` - Added SCRUM, SAP, and AI fields to Task interface
+- `apps/renderer/src/pages/Tasks.tsx` - Enhanced TaskCard with badges and recommendation section
+
+### Benefits
+- ✅ **Instant visibility** of work item hierarchy
+- ✅ **SAP context at a glance** - module, tcode, TR number
+- ✅ **AI guidance available** with one click
+- ✅ **Color-coded organization** for easy scanning
+- ✅ **Story points visible** for velocity tracking
+
+---
+
 ## [2.3.1] - 2025-01-10
 
 ### 🔥 Critical Enhancement - Complete History Reset

@@ -99,20 +99,68 @@ export default function Tasks() {
     return { text: dateStr, color: 'text-gray-400' };
   };
 
+  const getWorkItemTypeColor = (type?: string) => {
+    switch (type) {
+      case 'epic': return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      case 'story': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      case 'task': return 'bg-green-500/20 text-green-300 border-green-500/30';
+      case 'subtask': return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+      default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+    }
+  };
+
+  const getWorkItemTypeLabel = (type?: string) => {
+    if (!type) return 'Task';
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   const TaskCard = ({ task }: { task: Task }) => {
     const deadline = formatDeadline(task.deadline);
+    const [showRecommendation, setShowRecommendation] = useState(false);
 
     return (
       <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-blue-500/50 transition-colors mb-3">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-2">
+        {/* Header with Work Item Type */}
+        <div className="flex items-start gap-2 mb-2">
+          {/* Work Item Type Badge */}
+          <span className={`px-2 py-0.5 text-xs font-medium rounded border ${getWorkItemTypeColor(task.workItemType)}`}>
+            {getWorkItemTypeLabel(task.workItemType)}
+            {task.storyPoints && task.workItemType === 'story' && (
+              <span className="ml-1">({task.storyPoints})</span>
+            )}
+          </span>
+
+          {/* Title */}
           <h3 className="text-sm font-medium text-white flex-1">{task.title}</h3>
+
+          {/* Priority */}
           {task.priority && (
-            <span className={`ml-2 px-2 py-0.5 text-xs rounded border ${getPriorityColor(task.priority)}`}>
+            <span className={`px-2 py-0.5 text-xs rounded border ${getPriorityColor(task.priority)}`}>
               {getPriorityLabel(task.priority)}
             </span>
           )}
         </div>
+
+        {/* SAP Badges */}
+        {(task.sapModule || task.sapTcode || task.sapTransportRequest) && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {task.sapModule && (
+              <span className="px-2 py-0.5 text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded">
+                📦 {task.sapModule}
+              </span>
+            )}
+            {task.sapTcode && (
+              <span className="px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded">
+                🔧 {task.sapTcode}
+              </span>
+            )}
+            {task.sapTransportRequest && (
+              <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
+                🚚 {task.sapTransportRequest}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Description */}
         {task.description && (
@@ -159,6 +207,36 @@ export default function Tasks() {
             </div>
           )}
         </div>
+
+        {/* AI Recommendation */}
+        {task.aiRecommendation && (
+          <div className="mt-3 pt-3 border-t border-gray-700">
+            <button
+              onClick={() => setShowRecommendation(!showRecommendation)}
+              className="flex items-center justify-between w-full text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <span className="font-medium">🤖 AI Recommendation</span>
+              </span>
+              <svg
+                className={`w-3 h-3 transition-transform ${showRecommendation ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showRecommendation && (
+              <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-gray-300">
+                {task.aiRecommendation}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="mt-3 pt-3 border-t border-gray-700">

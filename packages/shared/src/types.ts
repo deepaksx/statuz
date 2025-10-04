@@ -174,6 +174,28 @@ export interface Task {
   tags?: string[];
   createdAt: number;
   updatedAt: number;
+
+  // SCRUM fields (v2.3.0)
+  workItemType?: 'epic' | 'story' | 'task' | 'subtask';
+  storyPoints?: number;
+  sprintId?: string;
+  sprintName?: string;
+  acceptanceCriteria?: string[]; // JSON array
+  progressPercentage?: number;
+  dependenciesCount?: number;
+  blockersCount?: number;
+
+  // SAP fields (v2.3.0)
+  sapModule?: string; // FI, CO, MM, SD, PP, QM, PM, HR, ABAP, BASIS, BW
+  sapTcode?: string; // VA01, ME21N, FB50, etc.
+  sapObjectType?: string; // Program, Report, Function, Table
+  sapTransportRequest?: string; // P01K905013
+
+  // AI fields (v2.3.0)
+  aiRecommendation?: string;
+  aiRiskAssessment?: string;
+  aiSimilarIssues?: string; // JSON array
+  aiConfidenceLevel?: 'low' | 'medium' | 'high';
 }
 
 export interface Risk {
