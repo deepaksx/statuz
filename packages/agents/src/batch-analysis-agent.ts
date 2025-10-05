@@ -78,7 +78,7 @@ export class BatchAnalysisAgent {
     try {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-1.5-flash',
         generationConfig: {
           temperature: 0.3, // Lower temperature for more structured output
           topK: 40,
@@ -87,7 +87,7 @@ export class BatchAnalysisAgent {
         },
       });
       this.isEnabled = true;
-      console.log('✅ [BatchAnalysisAgent] Initialized with Gemini 2.0 Flash');
+      console.log('✅ [BatchAnalysisAgent] Initialized with Gemini 1.5 Flash');
     } catch (error) {
       console.error('❌ [BatchAnalysisAgent] Failed to initialize:', error);
     }
@@ -109,7 +109,7 @@ export class BatchAnalysisAgent {
 
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-1.5-flash',
       generationConfig: {
         temperature: 0.3,
         topK: 40,
@@ -118,7 +118,7 @@ export class BatchAnalysisAgent {
       },
     });
     this.isEnabled = true;
-    console.log('✅ [BatchAnalysisAgent] API key updated and re-initialized');
+    console.log('✅ [BatchAnalysisAgent] API key updated and re-initialized with Gemini 1.5 Flash');
   }
 
   /**
