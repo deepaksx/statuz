@@ -122,6 +122,14 @@ export default function Projects() {
               )}
             </div>
 
+            {/* Description */}
+            {project.description && (
+              <div className="text-sm text-gray-400 mb-3 p-2 bg-gray-900 rounded border border-gray-700">
+                <div className="text-xs text-gray-500 mb-1">Project Description (AI Inferred):</div>
+                <div className="text-sm text-gray-300">{project.description}</div>
+              </div>
+            )}
+
             {/* Client */}
             {project.clientName && (
               <div className="text-sm text-gray-400 mb-3">
