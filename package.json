@@ -1,6 +1,6 @@
 {
   "name": "aipm",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "AI-Powered WhatsApp Project Manager - Intelligent Batch Analysis with SCRUM",
   "main": "dist/main/main.js",
   "type": "module",
@@ -26,7 +26,11 @@
     "test": "vitest",
     "test:ci": "vitest run",
     "setup": "cd packages/shared && npm install && cd ../event-bus && npm install && cd ../db && npm install && cd ../agents && npm install && cd ../background && npm install && cd ../../apps/desktop && npm install && cd ../renderer && npm install",
-    "dev:simple": "cd apps/renderer && npm run dev"
+    "dev:simple": "cd apps/renderer && npm run dev",
+    "backup:patch": "backup-version.bat patch",
+    "backup:minor": "backup-version.bat minor",
+    "backup:major": "backup-version.bat major",
+    "backup": "backup-version.bat patch"
   },
   "workspaces": [
     "apps/*",
