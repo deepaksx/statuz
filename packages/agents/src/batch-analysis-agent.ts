@@ -212,8 +212,18 @@ export class BatchAnalysisAgent {
 ## 🎯 YOUR MISSION
 Analyze the ENTIRE conversation history as ONE document and create a comprehensive project framework with Stories, Tasks, and Subtasks. This is a ONE-TIME foundational analysis.
 
-## 📋 PROJECT CONTEXT (Epic Definition)
+## 📋 PROJECT CONTEXT (Epic Definition - Use as Guide, Not to Copy)
 ${context || 'No context provided - infer from conversation'}
+
+${context ? `
+⚠️ IMPORTANT: The context above is the HIGH-LEVEL EPIC/GOAL. Do NOT just repeat it.
+Instead:
+1. READ the actual conversation to understand WHAT IS REALLY HAPPENING
+2. SYNTHESIZE your own project description based on the messages
+3. ADD SAP-specific insights you observe (modules, tcodes, technical challenges)
+4. ENHANCE the understanding with your expertise
+5. The context guides you, but YOU analyze and describe what you actually see in the messages
+` : ''}
 
 ## 💬 COMPLETE CONVERSATION HISTORY
 ${conversation}
@@ -284,7 +294,13 @@ Return ONLY valid JSON matching this structure:
 
 {
   "projectName": "${groupName}",
-  "projectDescription": "Brief description inferred from context and conversation",
+  "projectDescription": "YOUR synthesized understanding of what this project is about - based on ANALYZING the messages. Include: SAP modules involved, technical scope, key deliverables observed in conversation. This should be YOUR analysis, not just repeating the context.",
+
+  /** EXAMPLE projectDescription:
+   * ❌ BAD (just repeating context): "Implementation of SAP MM procurement module"
+   * ✅ GOOD (your analysis): "SAP MM procurement enhancement focusing on vendor master data automation (ME21N, ME22N). Team is integrating with external vendor portal via IDocs, handling transport P01K905013. Main challenges: authorization issues in QA and performance concerns with batch jobs. Three developers actively working on ABAP programs and two basis team members supporting transport management."
+   */
+
   "stories": [
     {
       "id": "STORY-001",
@@ -350,12 +366,13 @@ Return ONLY valid JSON matching this structure:
 
 ## ⚡ KEY PRINCIPLES
 1. **Holistic Analysis**: Consider the ENTIRE conversation, not individual messages
-2. **Context Matters**: Use the project context to guide classification
-3. **SAP Expertise**: Apply deep SAP knowledge to understand technical discussions
+2. **Context as Guide, Not to Copy**: The Epic context shows the high-level goal. YOU must analyze the actual messages to create a rich, detailed project description with SAP-specific insights
+3. **SAP Expertise**: Apply deep SAP knowledge to understand technical discussions - identify modules, transaction codes, technical patterns
 4. **Smart Inference**: Infer status, priority, assignments from conversation flow
 5. **Dependencies**: Identify task relationships and blockers
 6. **Realistic Estimates**: Story points should reflect actual effort discussed
 7. **Team Members**: Extract names and phone numbers from sender metadata
+8. **Value-Add Analysis**: Your projectDescription should ADD VALUE beyond the context - include what modules are involved, technical scope, challenges observed, team dynamics
 
 ## 🚀 BEGIN ANALYSIS
 Analyze the conversation and return comprehensive JSON structure.`;
