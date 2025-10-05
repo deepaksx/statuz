@@ -662,168 +662,177 @@ export class BackgroundService extends EventEmitter {
       let risksCreated = 0;
       let decisionsCreated = 0;
 
-      if (group.isWatched && this.batchAnalysisAgent && this.batchAnalysisAgent.isReady()) {
-        console.log(`🧠 Performing holistic batch analysis...`);
+      // Check prerequisites for extraction
+      if (!group.isWatched) {
+        throw new Error('Group must be watched to extract project data. Please enable "Watch" for this group first.');
+      }
 
-        // Get group context (Epic definition)
-        const groupContext = group.context || '';
-        console.log(`📋 Context: ${groupContext ? 'Available' : 'Not set - AI will infer'}`);
+      if (!this.batchAnalysisAgent) {
+        throw new Error('AI extraction not available. Please set your Gemini API key in Settings first.');
+      }
 
-        // Analyze entire history in ONE AI call
-        const analysisResult: BatchAnalysisResult = await this.batchAnalysisAgent.analyzeHistory(
-          messages,
-          groupContext,
-          group.name
-        );
+      if (!this.batchAnalysisAgent.isReady()) {
+        throw new Error('AI extraction agent not ready. Please check your Gemini API key in Settings.');
+      }
 
-        console.log(`✅ Batch analysis complete!`);
-        console.log(`   - Stories: ${analysisResult.stories.length}`);
-        console.log(`   - Risks: ${analysisResult.risks.length}`);
-        console.log(`   - Decisions: ${analysisResult.decisions.length}`);
+      console.log(`🧠 Performing holistic batch analysis...`);
 
-        // Step 3: Create/Update Project (Epic) from context
-        const allProjects = await this.db.getProjects({});
-        const existingProjects = allProjects.filter(p => p.whatsappGroupId === group.id);
-        let project;
+      // Get group context (Epic definition)
+      const groupContext = group.context || '';
+      console.log(`📋 Context: ${groupContext ? 'Available' : 'Not set - AI will infer'}`);
 
-        if (existingProjects.length > 0) {
-          // Update existing project
-          project = existingProjects[0];
-          console.log(`📁 Updating existing project: ${project.name}`);
-        } else {
-          // Create new project (Epic) from context
-          console.log(`📁 Creating new project from context...`);
-          const projectId = uuidv4();
-          await this.db.insertProject({
-            id: projectId,
-            whatsappGroupId: group.id,
-            name: analysisResult.projectName,
-            description: analysisResult.projectDescription || groupContext,
-            status: 'active',
-            priority: 2,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          });
-          const updatedProjects = await this.db.getProjects({});
-          project = updatedProjects.find(p => p.id === projectId);
-        }
+      // Analyze entire history in ONE AI call
+      const analysisResult: BatchAnalysisResult = await this.batchAnalysisAgent.analyzeHistory(
+        messages,
+        groupContext,
+        group.name
+      );
 
-        if (!project) {
-          throw new Error('Failed to create/find project');
-        }
+      console.log(`✅ Batch analysis complete!`);
+      console.log(`   - Stories: ${analysisResult.stories.length}`);
+      console.log(`   - Risks: ${analysisResult.risks.length}`);
+      console.log(`   - Decisions: ${analysisResult.decisions.length}`);
 
-        // Step 4: Insert all stories, tasks, subtasks
-        for (const story of analysisResult.stories) {
-          console.log(`📖 Creating story: ${story.title}`);
+      // Step 3: Create/Update Project (Epic) from context
+      const allProjects = await this.db.getProjects({});
+      const existingProjects = allProjects.filter(p => p.whatsappGroupId === group.id);
+      let project;
 
-          const storyId = uuidv4();
+      if (existingProjects.length > 0) {
+        // Update existing project
+        project = existingProjects[0];
+        console.log(`📁 Updating existing project: ${project.name}`);
+      } else {
+        // Create new project (Epic) from context
+        console.log(`📁 Creating new project from context...`);
+        const projectId = uuidv4();
+        await this.db.insertProject({
+          id: projectId,
+          whatsappGroupId: group.id,
+          name: analysisResult.projectName,
+          description: analysisResult.projectDescription || groupContext,
+          status: 'active',
+          priority: 2,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+        const updatedProjects = await this.db.getProjects({});
+        project = updatedProjects.find(p => p.id === projectId);
+      }
+
+      if (!project) {
+        throw new Error('Failed to create/find project');
+      }
+
+      // Step 4: Insert all stories, tasks, subtasks
+      for (const story of analysisResult.stories) {
+        console.log(`📖 Creating story: ${story.title}`);
+
+        const storyId = uuidv4();
+        await this.db.insertTask({
+          id: storyId,
+          projectId: project.id,
+          title: story.title,
+          description: story.description,
+          workItemType: 'story',
+          storyPoints: story.storyPoints,
+          acceptanceCriteria: story.acceptanceCriteria,
+          priority: story.priority,
+          status: story.status,
+          sapModule: story.sapModule,
+          sapTcode: story.sapTcode,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+
+        storiesCreated++;
+
+        // Insert tasks for this story
+        for (const task of story.tasks) {
+          console.log(`  ✓ Creating task: ${task.title}`);
+
+          const taskId = uuidv4();
           await this.db.insertTask({
-            id: storyId,
+            id: taskId,
             projectId: project.id,
-            title: story.title,
-            description: story.description,
-            workItemType: 'story',
-            storyPoints: story.storyPoints,
-            acceptanceCriteria: story.acceptanceCriteria,
-            priority: story.priority,
-            status: story.status,
-            sapModule: story.sapModule,
-            sapTcode: story.sapTcode,
+            parentTaskId: storyId,
+            title: task.title,
+            description: task.description,
+            workItemType: task.workItemType,
+            ownerAlias: task.ownerAlias,
+            ownerPhone: task.ownerPhone,
+            deadline: task.deadline,
+            priority: task.priority,
+            status: task.status,
+            sapModule: task.sapModule,
+            sapTcode: task.sapTcode,
+            sapTransportRequest: task.sapTransportRequest,
+            aiRecommendation: task.aiRecommendation,
             createdAt: Date.now(),
             updatedAt: Date.now()
           });
 
-          storiesCreated++;
+          tasksCreated++;
 
-          // Insert tasks for this story
-          for (const task of story.tasks) {
-            console.log(`  ✓ Creating task: ${task.title}`);
+          // Insert subtasks
+          if (task.subtasks && task.subtasks.length > 0) {
+            for (const subtask of task.subtasks) {
+              console.log(`    · Creating subtask: ${subtask.title}`);
 
-            const taskId = uuidv4();
-            await this.db.insertTask({
-              id: taskId,
-              projectId: project.id,
-              parentTaskId: storyId,
-              title: task.title,
-              description: task.description,
-              workItemType: task.workItemType,
-              ownerAlias: task.ownerAlias,
-              ownerPhone: task.ownerPhone,
-              deadline: task.deadline,
-              priority: task.priority,
-              status: task.status,
-              sapModule: task.sapModule,
-              sapTcode: task.sapTcode,
-              sapTransportRequest: task.sapTransportRequest,
-              aiRecommendation: task.aiRecommendation,
-              createdAt: Date.now(),
-              updatedAt: Date.now()
-            });
+              await this.db.insertTask({
+                id: uuidv4(),
+                projectId: project.id,
+                parentTaskId: taskId,
+                title: subtask.title,
+                description: subtask.description,
+                workItemType: 'subtask',
+                ownerAlias: subtask.ownerAlias,
+                priority: subtask.priority,
+                status: subtask.status,
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+              });
 
-            tasksCreated++;
-
-            // Insert subtasks
-            if (task.subtasks && task.subtasks.length > 0) {
-              for (const subtask of task.subtasks) {
-                console.log(`    · Creating subtask: ${subtask.title}`);
-
-                await this.db.insertTask({
-                  id: uuidv4(),
-                  projectId: project.id,
-                  parentTaskId: taskId,
-                  title: subtask.title,
-                  description: subtask.description,
-                  workItemType: 'subtask',
-                  ownerAlias: subtask.ownerAlias,
-                  priority: subtask.priority,
-                  status: subtask.status,
-                  createdAt: Date.now(),
-                  updatedAt: Date.now()
-                });
-
-                tasksCreated++;
-              }
+              tasksCreated++;
             }
           }
         }
-
-        // Step 5: Insert risks
-        for (const risk of analysisResult.risks) {
-          // Map probability values
-          const probabilityMap: Record<string, 'very_likely' | 'likely' | 'possible' | 'unlikely'> = {
-            'high': 'very_likely',
-            'medium': 'likely',
-            'low': 'unlikely'
-          };
-
-          await this.db.insertRisk({
-            id: uuidv4(),
-            projectId: project.id,
-            title: risk.title,
-            description: risk.description,
-            severity: risk.severity,
-            probability: probabilityMap[risk.probability] || 'possible',
-            mitigationPlan: risk.mitigation,
-            status: 'open',
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          });
-          risksCreated++;
-        }
-
-        // Step 6: Insert decisions (skipped - no insertDecision method yet)
-        // TODO: Implement insertDecision in database.ts
-        decisionsCreated = 0;
-        console.log(`⚠️  Skipping ${analysisResult.decisions.length} decisions (not implemented yet)`);
-
-        console.log(`✅ Batch analysis results saved:`);
-        console.log(`   - Stories: ${storiesCreated}`);
-        console.log(`   - Tasks: ${tasksCreated}`);
-        console.log(`   - Risks: ${risksCreated}`);
-        console.log(`   - Decisions: ${decisionsCreated}`);
-      } else {
-        console.log(`⚠️  Batch analysis skipped (group not watched or agent not ready)`);
       }
+
+      // Step 5: Insert risks
+      for (const risk of analysisResult.risks) {
+        // Map probability values
+        const probabilityMap: Record<string, 'very_likely' | 'likely' | 'possible' | 'unlikely'> = {
+          'high': 'very_likely',
+          'medium': 'likely',
+          'low': 'unlikely'
+        };
+
+        await this.db.insertRisk({
+          id: uuidv4(),
+          projectId: project.id,
+          title: risk.title,
+          description: risk.description,
+          severity: risk.severity,
+          probability: probabilityMap[risk.probability] || 'possible',
+          mitigationPlan: risk.mitigation,
+          status: 'open',
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+        risksCreated++;
+      }
+
+      // Step 6: Insert decisions (skipped - no insertDecision method yet)
+      // TODO: Implement insertDecision in database.ts
+      decisionsCreated = 0;
+      console.log(`⚠️  Skipping ${analysisResult.decisions.length} decisions (not implemented yet)`);
+
+      console.log(`✅ Batch analysis results saved:`);
+      console.log(`   - Stories: ${storiesCreated}`);
+      console.log(`   - Tasks: ${tasksCreated}`);
+      console.log(`   - Risks: ${risksCreated}`);
+      console.log(`   - Decisions: ${decisionsCreated}`);
 
       this.db.auditLog('PROJECT_DATA_EXTRACTED', `Extracted ${storiesCreated} stories, ${tasksCreated} tasks, ${risksCreated} risks for group ${groupId}`);
 
@@ -1010,6 +1019,15 @@ export class BackgroundService extends EventEmitter {
       this.parserAgent = new ParserAgent(apiKey);
       this.setupEventBusListeners();
     }
+
+    // Update or initialize Batch Analysis Agent with new API key
+    if (this.batchAnalysisAgent) {
+      this.batchAnalysisAgent.updateApiKey(apiKey);
+    } else {
+      this.batchAnalysisAgent = new BatchAnalysisAgent(apiKey);
+    }
+
+    console.log('✅ AI agents updated with new API key');
   }
 
   async sendMessage(groupId: string, message: string): Promise<boolean> {

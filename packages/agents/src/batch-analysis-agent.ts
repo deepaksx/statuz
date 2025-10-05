@@ -98,6 +98,30 @@ export class BatchAnalysisAgent {
   }
 
   /**
+   * Update API key and re-initialize
+   */
+  updateApiKey(apiKey: string): void {
+    if (!apiKey) {
+      this.isEnabled = false;
+      console.warn('⚠️  [BatchAnalysisAgent] API key removed - agent disabled');
+      return;
+    }
+
+    this.genAI = new GoogleGenerativeAI(apiKey);
+    this.model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        temperature: 0.3,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+      },
+    });
+    this.isEnabled = true;
+    console.log('✅ [BatchAnalysisAgent] API key updated and re-initialized');
+  }
+
+  /**
    * Analyze entire conversation history holistically
    * @param messages - Complete chat history
    * @param context - Project context/Epic definition
