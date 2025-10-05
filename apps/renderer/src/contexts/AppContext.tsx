@@ -48,7 +48,15 @@ interface AppContextType {
   deleteGroupContext: (groupId: string) => Promise<void>;
   generateGroupReport: (groupId: string, timeframe?: number) => Promise<any>;
   getGroupMembers: (groupId: string) => Promise<any[]>;
-  uploadChatHistory: (groupId: string, content: string) => Promise<{ success: boolean; messagesProcessed: number; messagesInserted: number }>;
+  uploadChatHistory: (groupId: string, content: string) => Promise<{
+    success: boolean;
+    messagesProcessed: number;
+    messagesInserted: number;
+    storiesCreated?: number;
+    tasksCreated?: number;
+    risksCreated?: number;
+    decisionsCreated?: number;
+  }>;
   deleteGroupHistory: (groupId: string) => Promise<{
     success: boolean;
     deletedMessages: number;

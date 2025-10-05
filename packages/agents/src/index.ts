@@ -8,6 +8,13 @@ export type {
   SAPContextAnalysis
 } from './project-advisor-agent.js';
 
+export { BatchAnalysisAgent } from './batch-analysis-agent.js';
+export type {
+  BatchAnalysisResult,
+  BatchStory,
+  BatchTask
+} from './batch-analysis-agent.js';
+
 // Future agents will be exported here:
 // export { PlannerAgent } from './planner-agent.js';
 // export { TrackerAgent } from './tracker-agent.js';

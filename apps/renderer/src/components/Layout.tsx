@@ -13,7 +13,6 @@ import {
   UserCircle,
   MessageSquare,
   FolderKanban,
-  CheckSquare,
   ListTree
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
@@ -31,8 +30,7 @@ export function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BarChart3 },
     { name: 'Projects', href: '/projects', icon: FolderKanban },
-    { name: 'Tasks', href: '/tasks', icon: CheckSquare },
-    { name: 'Backlog', href: '/backlog', icon: ListTree },
+    { name: 'Tasks', href: '/tasks', icon: ListTree },
     { name: 'Groups', href: '/groups', icon: Users },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Contacts', href: '/contacts', icon: UserCircle },
@@ -147,7 +145,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Footer */}
           <div className="p-4 border-t">
             <div className="text-xs text-gray-500">
-              Statuz v2.3.3
+              Statuz v2.4.0
             </div>
           </div>
         </div>

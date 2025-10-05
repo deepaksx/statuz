@@ -1,7 +1,7 @@
 {
   "name": "aipm",
-  "version": "2.3.3",
-  "description": "AI-Powered WhatsApp Project Manager - Advanced automation and intelligent monitoring",
+  "version": "2.4.0",
+  "description": "AI-Powered WhatsApp Project Manager - Intelligent Batch Analysis with SCRUM",
   "main": "dist/main/main.js",
   "type": "module",
   "scripts": {
