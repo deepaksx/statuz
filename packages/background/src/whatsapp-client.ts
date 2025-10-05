@@ -43,10 +43,21 @@ export class WhatsAppClient extends EventEmitter {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--single-process',
-          '--disable-gpu'
-        ]
-      }
+          // Removed --single-process (causes "Execution context was destroyed" errors)
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-software-rasterizer',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ],
+        timeout: 60000, // 60 second timeout for browser operations
+      },
+      // Add client options for better stability
+      webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+      },
     });
 
     this.setupEventHandlers();
@@ -83,42 +94,54 @@ export class WhatsAppClient extends EventEmitter {
     });
 
     this.client.on(Events.MESSAGE_RECEIVED, async (message: any) => {
-      console.log('📱 MESSAGE_RECEIVED event fired in WhatsApp client');
+      try {
+        console.log('📱 MESSAGE_RECEIVED event fired in WhatsApp client');
 
-      if (message.fromMe) {
-        console.log('⏭️  Skipping message from self');
-        return;
+        if (message.fromMe) {
+          console.log('⏭️  Skipping message from self');
+          return;
+        }
+
+        const chat = await message.getChat();
+        console.log(`📝 Message from chat: ${chat.name}, isGroup: ${chat.isGroup}`);
+
+        if (!chat.isGroup) {
+          console.log('⏭️  Skipping non-group message');
+          return;
+        }
+
+        const contact = await message.getContact();
+        console.log(`👤 Message author: ${contact.name || contact.pushname || 'Unknown'}`);
+
+        const processedMessage: Message = {
+          id: message.id._serialized,
+          groupId: chat.id._serialized,
+          author: contact.id._serialized,
+          authorName: contact.name || contact.pushname || 'Unknown',
+          timestamp: message.timestamp * 1000,
+          text: message.body,
+          raw: JSON.stringify({
+            id: message.id,
+            type: message.type,
+            timestamp: message.timestamp,
+            hasMedia: message.hasMedia,
+            isForwarded: message.isForwarded
+          })
+        };
+
+        console.log(`🚀 Emitting 'message' event for group: ${chat.name}`);
+        this.emit('message', processedMessage);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Handle execution context destroyed errors gracefully
+        if (errorMessage.includes('Execution context was destroyed') ||
+            errorMessage.includes('Protocol error')) {
+          console.warn('⚠️  Page context destroyed during message processing, skipping message');
+        } else {
+          console.error('❌ Error processing message:', error);
+        }
       }
-
-      const chat = await message.getChat();
-      console.log(`📝 Message from chat: ${chat.name}, isGroup: ${chat.isGroup}`);
-
-      if (!chat.isGroup) {
-        console.log('⏭️  Skipping non-group message');
-        return;
-      }
-
-      const contact = await message.getContact();
-      console.log(`👤 Message author: ${contact.name || contact.pushname || 'Unknown'}`);
-
-      const processedMessage: Message = {
-        id: message.id._serialized,
-        groupId: chat.id._serialized,
-        author: contact.id._serialized,
-        authorName: contact.name || contact.pushname || 'Unknown',
-        timestamp: message.timestamp * 1000,
-        text: message.body,
-        raw: JSON.stringify({
-          id: message.id,
-          type: message.type,
-          timestamp: message.timestamp,
-          hasMedia: message.hasMedia,
-          isForwarded: message.isForwarded
-        })
-      };
-
-      console.log(`🚀 Emitting 'message' event for group: ${chat.name}`);
-      this.emit('message', processedMessage);
     });
   }
 
@@ -144,7 +167,19 @@ export class WhatsAppClient extends EventEmitter {
       console.log(`✅ loadGroups: Emitting ${groups.length} groups`);
       this.emit('groupsUpdated', groups);
     } catch (error) {
-      console.error('❌ Failed to load groups:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Handle execution context destroyed errors
+      if (errorMessage.includes('Execution context was destroyed') ||
+          errorMessage.includes('Protocol error')) {
+        console.warn('⚠️  Page context destroyed during loadGroups, will retry on next ready event');
+        this.updateConnectionState({
+          status: 'RECONNECTING',
+          error: 'Connection interrupted, reconnecting...'
+        });
+      } else {
+        console.error('❌ Failed to load groups:', error);
+      }
     }
   }
 
@@ -202,7 +237,19 @@ export class WhatsAppClient extends EventEmitter {
       console.log(`✅ Returning ${groups.length} groups:`, groups.slice(0, 5).map((g: Group) => g.name));
       return groups;
     } catch (error) {
-      console.error('❌ Failed to get groups:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Handle execution context destroyed errors
+      if (errorMessage.includes('Execution context was destroyed') ||
+          errorMessage.includes('Protocol error')) {
+        console.warn('⚠️  Page context destroyed during getGroups, marking as reconnecting');
+        this.updateConnectionState({
+          status: 'RECONNECTING',
+          error: 'Connection interrupted, reconnecting...'
+        });
+      } else {
+        console.error('❌ Failed to get groups:', error);
+      }
       return [];
     }
   }
@@ -222,8 +269,21 @@ export class WhatsAppClient extends EventEmitter {
       console.log('✅ Message sent successfully');
       return true;
     } catch (error) {
-      console.error('❌ Failed to send message:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to send message');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Handle execution context destroyed errors
+      if (errorMessage.includes('Execution context was destroyed') ||
+          errorMessage.includes('Protocol error')) {
+        console.error('❌ Connection lost while sending message');
+        this.updateConnectionState({
+          status: 'RECONNECTING',
+          error: 'Connection interrupted, reconnecting...'
+        });
+        throw new Error('Connection lost. Please wait for reconnection and try again.');
+      } else {
+        console.error('❌ Failed to send message:', error);
+        throw new Error(errorMessage || 'Failed to send message');
+      }
     }
   }
 }
