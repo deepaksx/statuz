@@ -298,11 +298,44 @@ The `sample_messages.json` file contains realistic SAP project messages for test
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+## Documentation
+
+Comprehensive documentation is available in the [`documents/`](documents/) folder:
+
+### Getting Started
+- [Setup Guide](documents/SETUP.md) - Installation and configuration
+- [Quick Start](documents/RUN.md) - How to run the application
+- [Architecture](documents/ARCHITECTURE.md) - Technical architecture overview
+
+### User Guides
+- [SCRUM Backlog Guide](documents/SCRUM_BACKLOG_GUIDE.md) - Using the hierarchical backlog view
+- [Backup Guide](documents/BACKUP_GUIDE.md) - Automated GitHub backup system
+- [Quick Backup](documents/QUICK_BACKUP.md) - Quick reference for backups
+
+### Troubleshooting
+- [Debug Extraction](documents/DEBUG_EXTRACTION.md) - Troubleshooting extraction failures
+- [Extraction Fix](documents/EXTRACTION_FIX.md) - Technical details on extraction fixes
+- [Performance Fixes](documents/PERFORMANCE_FIXED.md) - Performance improvements
+
+### Development
+- [Claude Workflow](documents/CLAUDE_WORKFLOW.md) - Automated versioning workflow
+- [GitHub Setup](documents/GITHUB_SETUP.md) - GitHub repository setup
+- [Changelog](documents/CHANGELOG.md) - Version history and changes
+
+### Project History
+- [Phase 1 Summary](documents/PHASE1_SUMMARY.md) - Foundation phase
+- [Phase 2 Complete](documents/PHASE2_COMPLETE.md) - AI integration phase
+- [AI Transformation Plan](documents/AI_PM_TRANSFORMATION_PLAN.md) - Complete transformation roadmap
+
+### Data Management
+- [Restore Guide](documents/RESTORE.md) - Data restoration procedures
+- [Backup Verification](documents/BACKUP_VERIFICATION.md) - Backup verification steps
+
 ## Support
 
 - **Issues**: Report bugs on GitHub Issues
 - **Discussions**: Use GitHub Discussions for questions
-- **Documentation**: Check this README and code comments
+- **Documentation**: See [`documents/`](documents/) folder for detailed guides
 
 ---
 
