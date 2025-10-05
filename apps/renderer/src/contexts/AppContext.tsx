@@ -52,10 +52,13 @@ interface AppContextType {
     success: boolean;
     messagesProcessed: number;
     messagesInserted: number;
-    storiesCreated?: number;
-    tasksCreated?: number;
-    risksCreated?: number;
-    decisionsCreated?: number;
+  }>;
+  extractProjectData: (groupId: string) => Promise<{
+    success: boolean;
+    storiesCreated: number;
+    tasksCreated: number;
+    risksCreated: number;
+    decisionsCreated: number;
   }>;
   deleteGroupHistory: (groupId: string) => Promise<{
     success: boolean;
@@ -459,6 +462,17 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  const extractProjectData = async (groupId: string) => {
+    try {
+      const result = await invoke('extract-project-data', { groupId });
+      await refreshGroups(); // Refresh groups to update UI
+      return result;
+    } catch (error) {
+      console.error('Failed to extract project data:', error);
+      throw error;
+    }
+  };
+
   const deleteGroupHistory = async (groupId: string) => {
     try {
       const result = await invoke('delete-group-history', { groupId });
@@ -615,6 +629,7 @@ export function AppProvider({ children }: AppProviderProps) {
     generateGroupReport,
     getGroupMembers,
     uploadChatHistory,
+    extractProjectData,
     deleteGroupHistory,
     chatWithAI,
     testAIConnection,

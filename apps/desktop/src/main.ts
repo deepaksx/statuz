@@ -274,6 +274,10 @@ class StatuzApp {
         const { groupId: uploadGroupId, content } = message.payload;
         return await this.backgroundService.uploadChatHistory(uploadGroupId, content);
 
+      case 'extract-project-data':
+        const { groupId: extractGroupId } = message.payload;
+        return await this.backgroundService.extractProjectData(extractGroupId);
+
       case 'delete-group-history':
         const { groupId: deleteHistoryGroupId } = message.payload;
         return await this.backgroundService.deleteGroupHistory(deleteHistoryGroupId);

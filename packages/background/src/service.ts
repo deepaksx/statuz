@@ -579,7 +579,7 @@ export class BackgroundService extends EventEmitter {
 
   async uploadChatHistory(groupId: string, content: string) {
     try {
-      console.log(`📤 Uploading chat history for group: ${groupId}`);
+      console.log(`📤 [STEP 1] Uploading chat history for group: ${groupId}`);
       console.log(`📄 Content length: ${content.length} characters`);
 
       // Parse WhatsApp chat export
@@ -595,9 +595,8 @@ export class BackgroundService extends EventEmitter {
       }
 
       let messagesInserted = 0;
-      const insertedMessages: Message[] = [];
 
-      // Step 1: Insert all messages into database
+      // Insert all messages into database
       console.log(`💾 Inserting ${parsedMessages.length} messages into database...`);
       for (const parsed of parsedMessages) {
         const message: Message = {
@@ -613,12 +612,51 @@ export class BackgroundService extends EventEmitter {
         const inserted = await this.db.insertMessage(message);
         if (inserted) {
           messagesInserted++;
-          insertedMessages.push(message);
         }
       }
       console.log(`✅ Inserted ${messagesInserted} messages`);
 
-      // Step 2: Perform batch analysis if group is watched and batch agent is ready
+      // Mark group as having history uploaded
+      await this.db.updateGroupHistoryStatus(groupId, true);
+
+      this.db.auditLog('CHAT_HISTORY_UPLOADED', `Uploaded ${messagesInserted} messages for group ${groupId}`);
+
+      // Emit event to refresh groups in UI
+      const updatedGroups = await this.db.getGroups();
+      this.emit('groupsUpdated', updatedGroups);
+
+      return {
+        success: true,
+        messagesProcessed: parsedMessages.length,
+        messagesInserted
+      };
+    } catch (error) {
+      console.error('❌ Failed to upload chat history:', error);
+      throw error;
+    }
+  }
+
+  async extractProjectData(groupId: string) {
+    try {
+      console.log(`🧠 [STEP 2] Extracting project data for group: ${groupId}`);
+
+      // Get group info
+      const groups = await this.db.getGroups();
+      const group = groups.find(g => g.id === groupId);
+
+      if (!group) {
+        throw new Error(`Group ${groupId} not found`);
+      }
+
+      // Get all messages for this group
+      const messages = await this.db.getMessages(groupId);
+      console.log(`📨 Found ${messages.length} messages to analyze`);
+
+      if (messages.length === 0) {
+        throw new Error('No messages found. Please upload chat history first.');
+      }
+
+      // Perform batch analysis if group is watched and batch agent is ready
       let storiesCreated = 0;
       let tasksCreated = 0;
       let risksCreated = 0;
@@ -633,7 +671,7 @@ export class BackgroundService extends EventEmitter {
 
         // Analyze entire history in ONE AI call
         const analysisResult: BatchAnalysisResult = await this.batchAnalysisAgent.analyzeHistory(
-          insertedMessages,
+          messages,
           groupContext,
           group.name
         );
@@ -787,10 +825,7 @@ export class BackgroundService extends EventEmitter {
         console.log(`⚠️  Batch analysis skipped (group not watched or agent not ready)`);
       }
 
-      // Mark group as having history uploaded
-      await this.db.updateGroupHistoryStatus(groupId, true);
-
-      this.db.auditLog('CHAT_HISTORY_UPLOADED', `Uploaded ${messagesInserted} messages, created ${storiesCreated} stories, ${tasksCreated} tasks for group ${groupId}`);
+      this.db.auditLog('PROJECT_DATA_EXTRACTED', `Extracted ${storiesCreated} stories, ${tasksCreated} tasks, ${risksCreated} risks for group ${groupId}`);
 
       // Emit event to refresh groups in UI
       const updatedGroups = await this.db.getGroups();
@@ -798,15 +833,13 @@ export class BackgroundService extends EventEmitter {
 
       return {
         success: true,
-        messagesProcessed: parsedMessages.length,
-        messagesInserted,
         storiesCreated,
         tasksCreated,
         risksCreated,
         decisionsCreated
       };
     } catch (error) {
-      console.error('❌ Failed to upload chat history:', error);
+      console.error('❌ Failed to extract project data:', error);
       throw error;
     }
   }

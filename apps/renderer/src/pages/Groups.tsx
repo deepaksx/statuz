@@ -28,6 +28,7 @@ export function Groups() {
     getGroupMembers,
     getMessages,
     deleteGroupHistory,
+    extractProjectData,
     config,
     chatWithAI,
     sendMessage,
@@ -236,6 +237,39 @@ export function Groups() {
       toast.dismiss();
       toast.error('Failed to delete group data');
       console.error('Delete history error:', error);
+    }
+  };
+
+  const handleExtractProjectData = async (groupId: string, groupName: string) => {
+    const confirmMessage = `Extract project data for "${groupName}"?\n\n` +
+      `This will analyze all uploaded messages and create:\n` +
+      `• Stories (User Stories)\n` +
+      `• Tasks and Subtasks\n` +
+      `• Risks\n` +
+      `• Decisions\n\n` +
+      `This may take a minute depending on the amount of data.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      toast.loading('Analyzing messages and extracting project data...', { duration: Infinity });
+      const result = await extractProjectData(groupId);
+      toast.dismiss();
+
+      // Show extraction summary
+      const summary = `✅ Project data extracted successfully:\n` +
+        `📖 Stories: ${result.storiesCreated}\n` +
+        `✅ Tasks: ${result.tasksCreated}\n` +
+        `⚠️ Risks: ${result.risksCreated}\n` +
+        `🎯 Decisions: ${result.decisionsCreated}`;
+
+      toast.success(summary, { duration: 5000 });
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Failed to extract project data');
+      console.error('Extract project data error:', error);
     }
   };
 
@@ -746,6 +780,20 @@ export function Groups() {
                       <Upload className="h-4 w-4 mr-1" />
                       Upload History
                     </button>
+
+                    {group.hasHistoryUploaded && group.isWatched && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExtractProjectData(group.id, group.name);
+                        }}
+                        className="btn btn-sm btn-primary"
+                        title="Extract project data using AI"
+                      >
+                        <Cpu className="h-4 w-4 mr-1" />
+                        Extract
+                      </button>
+                    )}
 
                     {group.hasHistoryUploaded && (
                       <button
