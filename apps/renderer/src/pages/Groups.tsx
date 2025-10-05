@@ -268,7 +268,8 @@ export function Groups() {
       toast.success(summary, { duration: 5000 });
     } catch (error) {
       toast.dismiss();
-      toast.error('Failed to extract project data');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to extract project data: ${errorMessage}`);
       console.error('Extract project data error:', error);
     }
   };
