@@ -99,12 +99,21 @@ export class StatuzDatabase {
   // Groups
   getGroups(): Promise<Group[]> {
     return new Promise((resolve, reject) => {
-      this.db.all(`SELECT id, name, is_watched as isWatched,
-                   has_history_uploaded as hasHistoryUploaded,
-                   history_uploaded_at as historyUploadedAt,
-                   auto_response_enabled as autoResponseEnabled,
-                   auto_response_trigger as autoResponseTrigger
-                   FROM groups ORDER BY name`, (err, rows: any[]) => {
+      this.db.all(`
+        SELECT
+          g.id,
+          g.name,
+          g.is_watched as isWatched,
+          g.has_history_uploaded as hasHistoryUploaded,
+          g.history_uploaded_at as historyUploadedAt,
+          g.auto_response_enabled as autoResponseEnabled,
+          g.auto_response_trigger as autoResponseTrigger,
+          gc.context,
+          gc.updated_at as contextUpdatedAt
+        FROM groups g
+        LEFT JOIN group_context gc ON g.id = gc.group_id
+        ORDER BY g.name
+      `, (err, rows: any[]) => {
         if (err) reject(err);
         else resolve(rows.map(r => ({
           ...r,
@@ -116,12 +125,22 @@ export class StatuzDatabase {
 
   getWatchedGroups(): Promise<Group[]> {
     return new Promise((resolve, reject) => {
-      this.db.all(`SELECT id, name, is_watched as isWatched,
-                   has_history_uploaded as hasHistoryUploaded,
-                   history_uploaded_at as historyUploadedAt,
-                   auto_response_enabled as autoResponseEnabled,
-                   auto_response_trigger as autoResponseTrigger
-                   FROM groups WHERE is_watched = 1 ORDER BY name`, (err, rows: any[]) => {
+      this.db.all(`
+        SELECT
+          g.id,
+          g.name,
+          g.is_watched as isWatched,
+          g.has_history_uploaded as hasHistoryUploaded,
+          g.history_uploaded_at as historyUploadedAt,
+          g.auto_response_enabled as autoResponseEnabled,
+          g.auto_response_trigger as autoResponseTrigger,
+          gc.context,
+          gc.updated_at as contextUpdatedAt
+        FROM groups g
+        LEFT JOIN group_context gc ON g.id = gc.group_id
+        WHERE g.is_watched = 1
+        ORDER BY g.name
+      `, (err, rows: any[]) => {
         if (err) reject(err);
         else resolve(rows.map(r => ({
           ...r,
