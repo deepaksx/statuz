@@ -144,17 +144,39 @@ export class BatchAnalysisAgent {
 
     const prompt = this.buildBatchAnalysisPrompt(conversation, context, groupName);
 
+    let rawText = '';
     try {
       console.log(`🔍 [BatchAnalysisAgent] Analyzing ${messages.length} messages...`);
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      let text = response.text();
+      rawText = response.text();
 
-      // Strip markdown code blocks if present
-      const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      console.log(`📄 [BatchAnalysisAgent] Raw AI response (first 200 chars): ${rawText.substring(0, 200)}`);
+
+      // Clean the text for JSON parsing
+      let text = rawText.trim();
+
+      // Try multiple strategies to extract JSON from markdown
+
+      // Strategy 1: Match standard markdown code blocks with optional backticks before
+      let codeBlockMatch = text.match(/^`*```(?:json)?\s*\n?([\s\S]*?)\n?```/);
       if (codeBlockMatch) {
         text = codeBlockMatch[1].trim();
+        console.log(`🔧 [BatchAnalysisAgent] Stripped markdown code block (strategy 1)`);
       }
+      // Strategy 2: If still starts with backticks, try to find JSON object
+      else if (text.includes('```')) {
+        // Remove all backticks and "json" keywords, then find the JSON object
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          text = jsonMatch[0];
+          console.log(`🔧 [BatchAnalysisAgent] Extracted JSON object (strategy 2)`);
+        }
+      } else {
+        console.log(`ℹ️  [BatchAnalysisAgent] No code block found, using raw text`);
+      }
+
+      console.log(`📝 [BatchAnalysisAgent] Text to parse (first 200 chars): ${text.substring(0, 200)}`);
 
       const analysisResult: BatchAnalysisResult = JSON.parse(text);
       console.log(`✅ [BatchAnalysisAgent] Extracted ${analysisResult.stories.length} stories`);
@@ -162,6 +184,10 @@ export class BatchAnalysisAgent {
       return analysisResult;
     } catch (error) {
       console.error('❌ [BatchAnalysisAgent] Analysis failed:', error);
+      if (error instanceof Error && error.message.includes('JSON')) {
+        console.error('📄 [BatchAnalysisAgent] Failed to parse response. Full response was:');
+        console.error(rawText);
+      }
       throw error;
     }
   }

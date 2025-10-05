@@ -266,19 +266,32 @@ Extract entities (return JSON only):`;
 
       const result = await this.model.generateContent(fullPrompt);
       const response = await result.response;
-      let text = response.text();
+      let rawText = response.text();
 
-      // Strip markdown code blocks if present (```json ... ```)
-      const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      // Clean the text for JSON parsing
+      let text = rawText.trim();
+
+      // Try multiple strategies to extract JSON from markdown
+
+      // Strategy 1: Match standard markdown code blocks with optional backticks before
+      let codeBlockMatch = text.match(/^`*```(?:json)?\s*\n?([\s\S]*?)\n?```/);
       if (codeBlockMatch) {
         text = codeBlockMatch[1].trim();
+      }
+      // Strategy 2: If still starts with backticks, try to find JSON object
+      else if (text.includes('```')) {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          text = jsonMatch[0];
+        }
       }
 
       let parsed: ParseResult;
       try {
         parsed = JSON.parse(text);
       } catch (parseError) {
-        console.error('❌ [ParserAgent] Failed to parse JSON response:', text);
+        console.error('❌ [ParserAgent] Failed to parse JSON response:', text.substring(0, 500));
+        console.error('Full raw response:', rawText);
         return { entities: [] };
       }
 
