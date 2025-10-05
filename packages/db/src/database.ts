@@ -280,11 +280,11 @@ export class StatuzDatabase {
             return;
           }
 
-          // 1. Delete dependencies for tasks from this group
+          // 1. Delete dependencies for ALL tasks in projects from this group
           this.db.run(
             `DELETE FROM dependencies WHERE task_id IN (
-              SELECT id FROM tasks WHERE extracted_from_message_id IN (
-                SELECT id FROM messages WHERE group_id = ?
+              SELECT id FROM tasks WHERE project_id IN (
+                SELECT id FROM projects WHERE whatsapp_group_id = ?
               )
             )`,
             [groupId],
@@ -298,10 +298,10 @@ export class StatuzDatabase {
             }
           );
 
-          // 2. Delete tasks extracted from messages in this group
+          // 2. Delete ALL tasks in projects from this group
           this.db.run(
-            `DELETE FROM tasks WHERE extracted_from_message_id IN (
-              SELECT id FROM messages WHERE group_id = ?
+            `DELETE FROM tasks WHERE project_id IN (
+              SELECT id FROM projects WHERE whatsapp_group_id = ?
             )`,
             [groupId],
             function(err) {
@@ -346,9 +346,9 @@ export class StatuzDatabase {
             }
           );
 
-          // 5. Delete projects associated with this group
+          // 5. Delete projects associated with this group (FIXED: use whatsapp_group_id)
           this.db.run(
-            'DELETE FROM projects WHERE group_id = ?',
+            'DELETE FROM projects WHERE whatsapp_group_id = ?',
             [groupId],
             function(err) {
               if (err) {
