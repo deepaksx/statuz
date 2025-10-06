@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import type { Project } from '@aipm/shared';
 import { MermaidChart } from '../components/MermaidChart';
-import { ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
+import { ChevronDown, ChevronRight, BarChart3, Maximize2, X } from 'lucide-react';
 
 export default function Projects() {
   const { getProjects, getTasks } = useApp();
@@ -10,18 +10,10 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [taskCounts, setTaskCounts] = useState<Record<string, { total: number; done: number; todo: number; inProgress: number }>>({});
   const [expandedGantt, setExpandedGantt] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [fullScreenGantt, setFullScreenGantt] = useState<{ projectId: string; projectName: string; chart: string } | null>(null);
 
   useEffect(() => {
     loadProjects();
-  }, [refreshKey]);
-
-  // Auto-refresh every 5 seconds to catch updates from extraction
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshKey(prev => prev + 1);
-    }, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const loadProjects = async () => {
@@ -239,11 +231,24 @@ export default function Projects() {
               </button>
 
               {expandedGantt === project.id && (
-                <div className="mt-3 bg-white rounded-lg p-4 border border-gray-700 overflow-x-auto" style={{ minHeight: '400px' }}>
+                <div className="mt-3 bg-white rounded-lg p-4 border border-gray-700 overflow-auto">
                   {project.ganttChart ? (
-                    <MermaidChart chart={project.ganttChart} className="w-full" />
+                    <div>
+                      <div className="flex justify-end mb-2">
+                        <button
+                          onClick={() => setFullScreenGantt({ projectId: project.id, projectName: project.name, chart: project.ganttChart! })}
+                          className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                        >
+                          <Maximize2 className="h-3 w-3" />
+                          View Full Screen
+                        </button>
+                      </div>
+                      <div style={{ minHeight: '400px', width: '100%' }}>
+                        <MermaidChart chart={project.ganttChart} className="w-full" />
+                      </div>
+                    </div>
                   ) : (
-                    <div className="text-center py-6 text-gray-500 text-sm">
+                    <div className="text-center py-6 text-gray-500 text-sm" style={{ minHeight: '400px' }}>
                       <BarChart3 className="h-8 w-8 mx-auto mb-2 text-gray-600" />
                       <p>No Gantt chart available yet</p>
                       <p className="text-xs mt-1">
@@ -257,6 +262,30 @@ export default function Projects() {
           </div>
         ))}
       </div>
+
+      {/* Full Screen Gantt Chart Modal */}
+      {fullScreenGantt && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex flex-col">
+          {/* Header */}
+          <div className="bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white">{fullScreenGantt.projectName}</h2>
+              <p className="text-sm text-gray-400">Project Timeline</p>
+            </div>
+            <button
+              onClick={() => setFullScreenGantt(null)}
+              className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Chart Container */}
+          <div className="flex-1 overflow-auto p-6 bg-white">
+            <MermaidChart chart={fullScreenGantt.chart} className="w-full" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

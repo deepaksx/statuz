@@ -132,7 +132,13 @@ Please provide a helpful and concise answer based on the context provided.`;
       throw new Error('AI service not configured. Please provide an API key.');
     }
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-lite',
+      generationConfig: {
+        maxOutputTokens: 2048, // Increase output limit for Gantt charts
+        temperature: 0.1, // Lower temperature for more consistent output
+      }
+    });
 
     // Build context information
     let contextInfo = `Group: ${request.groupName}\n\nProject Context:\n${request.context}\n`;
@@ -159,38 +165,65 @@ Please provide a helpful and concise answer based on the context provided.`;
       });
     }
 
-    const prompt = `You are an expert project management AI. Based on the following project context and data, generate a Mermaid Gantt chart that visualizes the project timeline, milestones, and tasks.
+    const prompt = `You are an expert project management AI. Generate a concise Mermaid Gantt chart based on the following project context.
 
 ${contextInfo}
 
-Instructions:
-1. Analyze the context to identify key phases, milestones, and deliverables
-2. Create a logical project timeline with realistic durations
-3. Use Mermaid Gantt chart syntax
-4. Include sections for major project phases
-5. Add dependencies between tasks where appropriate
-6. Make the chart comprehensive but readable (max 15-20 tasks)
-7. Use task statuses: done, active, or leave blank for future tasks
+IMPORTANT: Keep task names SHORT (max 50 characters). Generate 8-10 tasks maximum to keep output concise.
 
-Mermaid Gantt Chart Syntax Reference:
-\`\`\`
+CRITICAL SYNTAX REQUIREMENTS - EVERY TASK MUST FOLLOW THIS EXACT FORMAT:
+Task Name         :status, taskid, YYYY-MM-DD, duration
+
+MANDATORY RULES:
+1. Task names MUST NOT contain colons - use dashes or hyphens instead
+2. EVERY task line MUST have ALL 4 components separated by commas:
+   - Task Name (text before colon, NO COLONS ALLOWED IN NAME)
+   - Status (done/active/crit or leave blank)
+   - Task ID (unique identifier like task1, task2)
+   - Start Date (YYYY-MM-DD format, use actual dates)
+   - Duration (like 14d, 3w, 2m)
+3. NEVER write incomplete tasks (missing date or duration)
+4. NEVER use "after taskX" - always use real dates
+5. NO comments (no %% lines)
+6. NO empty sections
+7. Timeline should be realistic (today: ${new Date().toISOString().split('T')[0]})
+8. Include 8-10 tasks MAXIMUM across 2-3 sections
+9. Keep task names SHORT (under 50 chars)
+
+CORRECT EXAMPLE:
 gantt
     title Project Timeline
     dateFormat YYYY-MM-DD
     section Phase 1
-    Task 1           :done, task1, 2024-01-01, 30d
-    Task 2           :active, task2, after task1, 20d
-    Task 3           :task3, after task2, 15d
-\`\`\`
+    Planning          :done, task1, 2024-01-01, 14d
+    Requirements      :done, task2, 2024-01-15, 21d
+    Design            :active, task3, 2024-02-05, 30d
+    section Phase 2
+    Development       :task4, 2024-03-07, 60d
+    Testing           :task5, 2024-05-06, 30d
+    Deployment        :task6, 2024-07-05, 14d
 
-IMPORTANT: Return ONLY the Mermaid syntax without any markdown code blocks or explanations. Start directly with "gantt".
+WRONG EXAMPLES (DO NOT DO THIS):
+❌ Task Name :
+❌ Task Name : 2024-01-01, 14d
+❌ Task Name : active, after task1, 14d
+❌ Task Name : active, task1
+❌ Story 1: System Readiness :active, story1, 2025-10-19, 10d (colon in task name!)
 
-Generate the Mermaid Gantt chart:`;
+CORRECT VERSION OF LAST EXAMPLE:
+✅ Story 1 - System Readiness :active, story1, 2025-10-19, 10d
+
+Generate ONLY the Mermaid Gantt chart with complete task definitions:`;
 
     try {
       const result = await model.generateContent(prompt);
       const response = result.response;
       let mermaidSyntax = response.text().trim();
+
+      console.log(`🤖 AI RAW RESPONSE (length: ${mermaidSyntax.length} chars):`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(mermaidSyntax);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
       // Clean up the response - remove markdown code blocks if present
       mermaidSyntax = mermaidSyntax
@@ -199,10 +232,137 @@ Generate the Mermaid Gantt chart:`;
         .replace(/\s*```$/i, '')
         .trim();
 
+      // Remove any lines that start with %% (comments)
+      mermaidSyntax = mermaidSyntax
+        .split('\n')
+        .filter(line => !line.trim().startsWith('%%'))
+        .join('\n');
+
+      // Validate and clean task lines
+      const lines = mermaidSyntax.split('\n');
+      const cleanedLines: string[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmedLine = line.trim();
+
+        // Keep gantt, title, dateFormat, axisFormat lines
+        if (trimmedLine.startsWith('gantt') ||
+            trimmedLine.startsWith('title') ||
+            trimmedLine.startsWith('dateFormat') ||
+            trimmedLine.startsWith('axisFormat') ||
+            trimmedLine === '') {
+          cleanedLines.push(line);
+          continue;
+        }
+
+        // If this is a section header
+        if (trimmedLine.startsWith('section ')) {
+          // We'll add it later if it has valid tasks
+          cleanedLines.push(line);
+          continue;
+        }
+
+        // If this is a task line (contains colon)
+        if (trimmedLine.includes(':')) {
+          // Check if line ends abruptly (likely truncated - no closing date/duration)
+          const colonIndex = trimmedLine.indexOf(':');
+          const afterColon = trimmedLine.substring(colonIndex + 1).trim();
+
+          // If nothing after colon, or very short, skip it
+          if (!afterColon || afterColon.length < 5) {
+            console.warn(`Skipping truncated/empty task: ${trimmedLine}`);
+            continue;
+          }
+
+          // Check if line looks incomplete (ends without proper duration like "20" instead of "20d")
+          if (afterColon.length < 20 || !afterColon.includes(',')) {
+            console.warn(`Skipping incomplete/truncated task: ${trimmedLine}`);
+            continue;
+          }
+
+          // Validate task has all required parts: :status, taskid, date, duration
+          const parts = trimmedLine.split(':');
+          if (parts.length >= 2) {
+            const taskDef = parts[1].trim();
+            const components = taskDef.split(',').map(s => s.trim());
+
+            // Valid task must have at least 3 components (taskid, date, duration)
+            // or 4 if status is included
+            if (components.length >= 3) {
+              // Check if it has a date pattern (YYYY-MM-DD)
+              const hasDate = components.some(c => /\d{4}-\d{2}-\d{2}/.test(c));
+              // Check if it has a duration pattern (Xd, Xw, Xm)
+              const hasDuration = components.some(c => /\d+[dwm]/.test(c));
+
+              if (hasDate && hasDuration) {
+                cleanedLines.push(line);
+              } else {
+                console.warn(`Skipping incomplete task (missing date/duration): ${trimmedLine}`);
+              }
+            } else {
+              console.warn(`Skipping malformed task (too few components): ${trimmedLine}`);
+            }
+          }
+        } else {
+          // Keep other lines as-is
+          cleanedLines.push(line);
+        }
+      }
+
+      // Remove sections with no tasks
+      const finalLines: string[] = [];
+      for (let i = 0; i < cleanedLines.length; i++) {
+        const line = cleanedLines[i];
+        const trimmedLine = line.trim();
+
+        if (trimmedLine.startsWith('section ')) {
+          // Check if next non-empty line is also a section or end
+          let hasTask = false;
+          for (let j = i + 1; j < cleanedLines.length; j++) {
+            const nextLine = cleanedLines[j].trim();
+            if (nextLine === '') continue;
+            if (nextLine.startsWith('section ')) break;
+            if (nextLine.includes(':')) {
+              hasTask = true;
+              break;
+            }
+          }
+          if (hasTask) {
+            finalLines.push(line);
+          }
+        } else {
+          finalLines.push(line);
+        }
+      }
+
+      mermaidSyntax = finalLines.join('\n').trim();
+
       // Ensure it starts with 'gantt'
       if (!mermaidSyntax.toLowerCase().startsWith('gantt')) {
         throw new Error('AI did not return valid Mermaid Gantt chart syntax');
       }
+
+      // Count valid tasks
+      const taskCount = finalLines.filter(line => {
+        const trimmed = line.trim();
+        return trimmed.includes(':') &&
+               !trimmed.startsWith('gantt') &&
+               !trimmed.startsWith('title') &&
+               !trimmed.startsWith('dateFormat') &&
+               !trimmed.startsWith('axisFormat') &&
+               !trimmed.startsWith('section');
+      }).length;
+
+      if (taskCount === 0) {
+        throw new Error('AI generated Gantt chart with no valid tasks. All tasks were incomplete or malformed.');
+      }
+
+      console.log(`✅ Gantt chart validated: ${taskCount} valid tasks`);
+      console.log(`📊 FINAL MERMAID SYNTAX TO BE SAVED:`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(mermaidSyntax);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
       return {
         mermaidSyntax

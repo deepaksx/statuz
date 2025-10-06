@@ -677,9 +677,15 @@ export class BackgroundService extends EventEmitter {
 
       console.log(`🧠 Performing holistic batch analysis...`);
 
-      // Get group context (Epic definition)
-      const groupContext = group.context || '';
+      // Get group context (Epic definition) from database
+      const groupContextData = await this.db.getGroupContext(groupId);
+      const groupContext = groupContextData.context || '';
       console.log(`📋 Context: ${groupContext ? 'Available' : 'Not set - AI will infer'}`);
+      if (groupContext) {
+        console.log(`📋 Context Preview (first 200 chars):`);
+        console.log(`   ${groupContext.substring(0, 200)}${groupContext.length > 200 ? '...' : ''}`);
+        console.log(`📋 Context Length: ${groupContext.length} characters`);
+      }
 
       // Analyze entire history in ONE AI call
       const analysisResult: BatchAnalysisResult = await this.batchAnalysisAgent.analyzeHistory(
@@ -836,6 +842,8 @@ export class BackgroundService extends EventEmitter {
 
       // Step 7: Generate Gantt Chart
       console.log(`📊 Generating Gantt chart for project ${project.id}...`);
+      console.log(`🔍 DEBUG: groupContext exists = ${!!groupContext}, length = ${groupContext?.length || 0}`);
+      console.log(`🔍 DEBUG: groupContext preview = ${groupContext?.substring(0, 100) || 'EMPTY'}`);
       try {
         // Ensure AI service has API key
         if (!this.aiService.hasApiKey() && this.config.geminiApiKey) {
@@ -846,12 +854,15 @@ export class BackgroundService extends EventEmitter {
         if (!this.aiService.hasApiKey()) {
           console.warn(`⚠️  Skipping Gantt chart generation - No API key available`);
           console.warn(`   Set your Gemini API key in Settings to enable Gantt chart generation`);
+        } else if (!groupContext) {
+          console.warn(`⚠️  Skipping Gantt chart generation - No context data available`);
+          console.warn(`   Set context for this group to enable Gantt chart generation`);
         } else {
           const allTasks = await this.db.getTasks({ projectId: project.id });
           console.log(`   Found ${allTasks.length} tasks for Gantt chart`);
 
           const ganttResult = await this.aiService.generateGanttChart({
-            context: groupContext || analysisResult.projectDescription || '',
+            context: groupContext,
             groupName: group.name,
             tasks: allTasks,
             projects: [project]
