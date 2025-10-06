@@ -19,6 +19,9 @@ declare global {
       showSaveDialog: (options?: any) => Promise<any>;
       saveFile: (path: string, content: string) => Promise<void>;
     };
+    electron: {
+      invoke: (channel: string, ...args: any[]) => Promise<any>;
+    };
   }
 }
 

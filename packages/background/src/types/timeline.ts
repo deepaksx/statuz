@@ -96,12 +96,9 @@ export interface QueuedEvent {
 }
 
 export interface ProcessingMetrics {
-  groupId: string;
-  lastProcessedAt: number;
-  aiCallCount: number;
-  successCount: number;
-  failureCount: number;
-  lastError?: string;
-  inBackoff: boolean;
-  backoffUntil?: number;
+  lastAiCallAt: number;
+  consecutiveFailures: number;
+  totalProcessed: number;
+  lastFailureAt?: number;
+  circuitBreakerUntil?: number;
 }

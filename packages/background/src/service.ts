@@ -9,7 +9,7 @@ import { ContextLoader } from './context/loader.js';
 import { SnapshotGenerator } from './snapshot/generator.js';
 import { parseWhatsAppChat } from './utils/whatsapp-parser.js';
 import { AIService } from './ai-service.js';
-import { TimelineEngine } from './timeline-engine.js';
+import { TimelineEngine } from './timeline-engine-simple.js';
 import type {
   WhatsAppConnectionState,
   Group,
