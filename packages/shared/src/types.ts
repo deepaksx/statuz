@@ -148,6 +148,7 @@ export interface Project {
   projectManager?: string;
   technicalLead?: string;
   description?: string;
+  ganttChart?: string; // Mermaid Gantt chart syntax
   createdAt: number;
   updatedAt: number;
 }

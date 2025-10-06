@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import type { Project } from '@aipm/shared';
+import { MermaidChart } from '../components/MermaidChart';
+import { ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
 
 export default function Projects() {
   const { getProjects, getTasks } = useApp();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [taskCounts, setTaskCounts] = useState<Record<string, { total: number; done: number; todo: number; inProgress: number }>>({});
+  const [expandedGantt, setExpandedGantt] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -208,6 +211,30 @@ export default function Projects() {
                   </svg>
                   <span>Synced from WhatsApp</span>
                 </div>
+              </div>
+            )}
+
+            {/* Gantt Chart Section */}
+            {project.ganttChart && (
+              <div className="border-t border-gray-700 pt-3 mt-3">
+                <button
+                  onClick={() => setExpandedGantt(expandedGantt === project.id ? null : project.id)}
+                  className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors w-full"
+                >
+                  {expandedGantt === project.id ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Project Timeline (Gantt Chart)</span>
+                </button>
+
+                {expandedGantt === project.id && (
+                  <div className="mt-3 bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
+                    <MermaidChart chart={project.ganttChart} className="min-w-full" />
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -700,6 +700,7 @@ export class StatuzDatabase {
           projectManager: row.project_manager,
           technicalLead: row.technical_lead,
           description: row.description,
+          ganttChart: row.gantt_chart,
           createdAt: row.created_at,
           updatedAt: row.updated_at
         })));
@@ -737,6 +738,64 @@ export class StatuzDatabase {
         if (err) reject(err);
         else {
           this.auditLog('PROJECT_CREATED', `Project ${project.name} created`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  updateProject(projectId: string, updates: Partial<Project>): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const updateFields: string[] = [];
+      const params: any[] = [];
+
+      if (updates.name !== undefined) {
+        updateFields.push('name = ?');
+        params.push(updates.name);
+      }
+      if (updates.code !== undefined) {
+        updateFields.push('code = ?');
+        params.push(updates.code);
+      }
+      if (updates.clientName !== undefined) {
+        updateFields.push('client_name = ?');
+        params.push(updates.clientName);
+      }
+      if (updates.status !== undefined) {
+        updateFields.push('status = ?');
+        params.push(updates.status);
+      }
+      if (updates.priority !== undefined) {
+        updateFields.push('priority = ?');
+        params.push(updates.priority);
+      }
+      if (updates.description !== undefined) {
+        updateFields.push('description = ?');
+        params.push(updates.description);
+      }
+      if (updates.ganttChart !== undefined) {
+        updateFields.push('gantt_chart = ?');
+        params.push(updates.ganttChart);
+      }
+      if (updates.projectManager !== undefined) {
+        updateFields.push('project_manager = ?');
+        params.push(updates.projectManager);
+      }
+      if (updates.technicalLead !== undefined) {
+        updateFields.push('technical_lead = ?');
+        params.push(updates.technicalLead);
+      }
+
+      updateFields.push('updated_at = ?');
+      params.push(Date.now());
+      params.push(projectId);
+
+      const query = `UPDATE projects SET ${updateFields.join(', ')} WHERE id = ?`;
+
+      this.db.run(query, params, (err) => {
+        if (err) reject(err);
+        else {
+          this.auditLog('PROJECT_UPDATED', `Project ${projectId} updated`);
           resolve();
         }
       });

@@ -834,6 +834,25 @@ export class BackgroundService extends EventEmitter {
       console.log(`   - Risks: ${risksCreated}`);
       console.log(`   - Decisions: ${decisionsCreated}`);
 
+      // Step 7: Generate Gantt Chart
+      console.log(`📊 Generating Gantt chart...`);
+      try {
+        const allTasks = await this.db.getTasks({ projectId: project.id });
+        const ganttResult = await this.aiService.generateGanttChart({
+          context: groupContext || analysisResult.projectDescription || '',
+          groupName: group.name,
+          tasks: allTasks,
+          projects: [project]
+        });
+
+        // Update project with Gantt chart
+        await this.db.updateProject(project.id, { ganttChart: ganttResult.mermaidSyntax });
+        console.log(`✅ Gantt chart generated and saved`);
+      } catch (ganttError) {
+        console.error(`⚠️  Failed to generate Gantt chart:`, ganttError);
+        // Continue even if Gantt chart generation fails
+      }
+
       this.db.auditLog('PROJECT_DATA_EXTRACTED', `Extracted ${storiesCreated} stories, ${tasksCreated} tasks, ${risksCreated} risks for group ${groupId}`);
 
       // Emit event to refresh groups in UI
