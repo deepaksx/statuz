@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { FileText, Save, AlertCircle, Sparkles } from 'lucide-react';
+import { FileText, Save, AlertCircle, Sparkles, BarChart3, Loader2 } from 'lucide-react';
 import type { Group } from '@aipm/shared';
+import { MermaidChart } from '../components/MermaidChart';
 
 export function Context() {
-  const { groups, loading, updateGroupContext } = useApp();
+  const { groups, loading, updateGroupContext, generateGanttChart } = useApp();
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [contextText, setContextText] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [ganttChartSyntax, setGanttChartSyntax] = useState<string | null>(null);
+  const [generatingChart, setGeneratingChart] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
 
   // Auto-select first group on load
   useEffect(() => {
@@ -22,6 +26,9 @@ export function Context() {
   useEffect(() => {
     if (selectedGroup) {
       setContextText(selectedGroup.context || '');
+      // Reset chart when switching groups
+      setGanttChartSyntax(null);
+      setChartError(null);
     }
   }, [selectedGroup]);
 
@@ -38,6 +45,22 @@ export function Context() {
       console.error('Failed to save context:', error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateGanttChart = async () => {
+    if (!selectedGroup) return;
+
+    try {
+      setGeneratingChart(true);
+      setChartError(null);
+      const result = await generateGanttChart(selectedGroup.id);
+      setGanttChartSyntax(result.mermaidSyntax);
+    } catch (error) {
+      console.error('Failed to generate Gantt chart:', error);
+      setChartError(error instanceof Error ? error.message : 'Failed to generate chart');
+    } finally {
+      setGeneratingChart(false);
     }
   };
 
@@ -216,6 +239,58 @@ export function Context() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Gantt Chart Section */}
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    AI-Generated Project Timeline
+                  </h3>
+                  <button
+                    onClick={handleGenerateGanttChart}
+                    disabled={generatingChart || !contextText.trim()}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      generatingChart || !contextText.trim()
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                        : 'bg-purple-500 text-white hover:bg-purple-600'
+                    }`}
+                  >
+                    {generatingChart ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3" />
+                        Generate Gantt Chart
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {chartError && (
+                  <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded text-red-300 text-sm">
+                    <strong>Error:</strong> {chartError}
+                  </div>
+                )}
+
+                {ganttChartSyntax ? (
+                  <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
+                    <MermaidChart chart={ganttChartSyntax} className="min-w-full" />
+                  </div>
+                ) : (
+                  <div className="bg-gray-900 rounded-lg p-8 border border-gray-700 text-center">
+                    <BarChart3 className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">
+                      {!contextText.trim()
+                        ? 'Save context first, then generate a Gantt chart'
+                        : 'Click "Generate Gantt Chart" to visualize the project timeline'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

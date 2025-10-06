@@ -13,7 +13,8 @@ import {
   UserCircle,
   MessageSquare,
   FolderKanban,
-  ListTree
+  ListTree,
+  FileText
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import clsx from 'clsx';
@@ -34,6 +35,7 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Groups', href: '/groups', icon: Users },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Contacts', href: '/contacts', icon: UserCircle },
+    { name: 'Context', href: '/context', icon: FileText },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 

@@ -326,6 +326,10 @@ class StatuzApp {
         const { apiKey: testApiKey } = message.payload || {};
         return await this.backgroundService.testAIConnection(testApiKey);
 
+      case 'generate-gantt-chart':
+        const { groupId: ganttGroupId, apiKey: ganttApiKey } = message.payload;
+        return await this.backgroundService.generateGanttChart(ganttGroupId, ganttApiKey);
+
       case 'set-gemini-api-key':
         const { apiKey: geminiKey } = message.payload;
         this.backgroundService.setGeminiApiKey(geminiKey);

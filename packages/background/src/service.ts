@@ -1008,6 +1008,50 @@ export class BackgroundService extends EventEmitter {
     return await this.aiService.testConnection();
   }
 
+  async generateGanttChart(groupId: string, apiKey?: string) {
+    // Set API key if provided
+    if (apiKey && apiKey !== this.config.geminiApiKey) {
+      this.aiService.setApiKey(apiKey);
+    } else if (this.config.geminiApiKey) {
+      this.aiService.setApiKey(this.config.geminiApiKey);
+    }
+
+    if (!this.aiService.hasApiKey()) {
+      throw new Error('AI service not configured. Please provide a Gemini API key in settings.');
+    }
+
+    // Get group info
+    const groups = await this.db.getGroups();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) {
+      throw new Error('Group not found');
+    }
+
+    // Get group context
+    const contextData = await this.db.getGroupContext(groupId);
+    if (!contextData || !contextData.context) {
+      throw new Error('No context found for this group. Please set the project context first.');
+    }
+
+    // Get projects for this group
+    const allProjects = await this.db.getProjects();
+    const projects = allProjects.filter(p => p.whatsappGroupId === groupId);
+
+    // Get tasks for those projects
+    let tasks: any[] = [];
+    for (const project of projects) {
+      const projectTasks = await this.db.getTasks({ projectId: project.id });
+      tasks = tasks.concat(projectTasks);
+    }
+
+    return await this.aiService.generateGanttChart({
+      context: contextData.context,
+      groupName: group.name,
+      tasks,
+      projects
+    });
+  }
+
   setGeminiApiKey(apiKey: string) {
     this.aiService.setApiKey(apiKey);
     this.config.geminiApiKey = apiKey;

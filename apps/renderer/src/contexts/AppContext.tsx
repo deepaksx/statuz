@@ -74,6 +74,7 @@ interface AppContextType {
   testAIConnection: (apiKey?: string) => Promise<boolean>;
   setGeminiApiKey: (apiKey: string) => Promise<void>;
   sendMessage: (groupId: string, message: string) => Promise<boolean>;
+  generateGanttChart: (groupId: string, apiKey?: string) => Promise<{ mermaidSyntax: string }>;
   invoke: (type: string, payload?: any) => Promise<any>;
 
   // ==================== AIPM PROJECT MANAGEMENT ====================
@@ -504,6 +505,16 @@ export function AppProvider({ children }: AppProviderProps) {
     }
   };
 
+  const generateGanttChart = async (groupId: string, apiKey?: string) => {
+    try {
+      const result = await invoke('generate-gantt-chart', { groupId, apiKey });
+      return result;
+    } catch (error) {
+      console.error('Failed to generate Gantt chart:', error);
+      throw error;
+    }
+  };
+
   const setGeminiApiKey = async (apiKey: string) => {
     try {
       await invoke('set-gemini-api-key', { apiKey });
@@ -635,6 +646,7 @@ export function AppProvider({ children }: AppProviderProps) {
     testAIConnection,
     setGeminiApiKey,
     sendMessage,
+    generateGanttChart,
     invoke,
     // AIPM Project Management
     getProjects,
