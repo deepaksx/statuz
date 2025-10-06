@@ -232,22 +232,37 @@ export class TimelineEngine extends EventEmitter {
         .map(e => e.data as MessageDelta)
         .slice(-MAX_MESSAGE_DELTAS);
 
-      // Get projects for this group
-      const allProjects = await this.db.getProjects();
-      const projects = allProjects.filter((p: any) => p.whatsappGroupId === groupId);
-
-      if (projects.length === 0) {
-        console.warn(`⚠️  No project found for group ${groupId}, skipping`);
-        this.queues.set(groupId, []);
-        this.processing.delete(groupId);
-        return;
-      }
-
-      const project = projects[0];
-
       // Get groups to get the group name
       const groups = await this.db.getGroups();
       const group = groups.find((g: any) => g.id === groupId);
+
+      // Get projects for this group
+      const allProjects = await this.db.getProjects();
+      let projects = allProjects.filter((p: any) => p.whatsappGroupId === groupId);
+
+      // Auto-create project if it doesn't exist
+      if (projects.length === 0) {
+        const projectId = nanoid();
+        const projectName = group?.name || 'Unnamed Project';
+
+        console.log(`📂 Auto-creating project "${projectName}" for group ${groupId}`);
+
+        await this.db.insertProject({
+          id: projectId,
+          name: projectName,
+          whatsappGroupId: groupId,
+          status: 'active',
+          priority: 3,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+
+        // Fetch the newly created project
+        const updatedProjects = await this.db.getProjects();
+        projects = updatedProjects.filter((p: any) => p.whatsappGroupId === groupId);
+      }
+
+      const project = projects[0];
 
       // Get tasks for the project
       const tasks = await this.db.getTasks({ projectId: project.id });
