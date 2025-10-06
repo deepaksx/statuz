@@ -239,9 +239,9 @@ export default function Projects() {
               </button>
 
               {expandedGantt === project.id && (
-                <div className="mt-3 bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
+                <div className="mt-3 bg-white rounded-lg p-4 border border-gray-700 overflow-x-auto" style={{ minHeight: '400px' }}>
                   {project.ganttChart ? (
-                    <MermaidChart chart={project.ganttChart} className="min-w-full" />
+                    <MermaidChart chart={project.ganttChart} className="w-full" />
                   ) : (
                     <div className="text-center py-6 text-gray-500 text-sm">
                       <BarChart3 className="h-8 w-8 mx-auto mb-2 text-gray-600" />
