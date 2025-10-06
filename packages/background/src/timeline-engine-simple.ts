@@ -110,10 +110,31 @@ export class TimelineEngine extends EventEmitter {
    * Get current timeline state for a group
    */
   async getState(groupId: string): Promise<TimelineState | null> {
-    // This method would require access to service methods
-    // For now, return null - will be implemented when service integration is complete
-    console.log(`📊 getState called for group ${groupId} (not yet implemented)`);
-    return null;
+    try {
+      // Get projects for this group
+      const allProjects = await this.db.getProjects();
+      const projects = allProjects.filter((p: any) => p.whatsappGroupId === groupId);
+
+      if (projects.length === 0) {
+        return null;
+      }
+
+      const project = projects[0];
+
+      return {
+        groupId,
+        projectId: project.id,
+        tasks: [], // Tasks would be extracted from the Gantt chart
+        milestones: [], // Milestones would be extracted from the Gantt chart
+        ganttMermaid: project.ganttChart || '',
+        lastAiReasoning: project.lastAiReasoning || '',
+        lastUpdated: project.timelineUpdatedAt || project.updatedAt || Date.now(),
+        version: project.timelineVersion || 0
+      };
+    } catch (error) {
+      console.error(`Failed to get timeline state for group ${groupId}:`, error);
+      return null;
+    }
   }
 
   /**
@@ -196,9 +217,65 @@ export class TimelineEngine extends EventEmitter {
     try {
       console.log(`🔄 Processing ${queue.length} events for group ${groupId}`);
 
-      // NOTE: Actual AI processing would happen here
-      // For now, we just clear the queue and log
-      console.log(`✅ Timeline processing complete for group ${groupId}`);
+      // Get context
+      const contextResult = await this.db.getGroupContext(groupId);
+      if (!contextResult || !contextResult.context) {
+        console.warn(`⚠️  No context set for group ${groupId}, skipping`);
+        this.queues.set(groupId, []);
+        this.processing.delete(groupId);
+        return;
+      }
+
+      // Extract message deltas from queue
+      const messageDeltas = queue
+        .filter(e => e.type === 'message')
+        .map(e => e.data as MessageDelta)
+        .slice(-MAX_MESSAGE_DELTAS);
+
+      // Get projects for this group
+      const allProjects = await this.db.getProjects();
+      const projects = allProjects.filter((p: any) => p.whatsappGroupId === groupId);
+
+      if (projects.length === 0) {
+        console.warn(`⚠️  No project found for group ${groupId}, skipping`);
+        this.queues.set(groupId, []);
+        this.processing.delete(groupId);
+        return;
+      }
+
+      const project = projects[0];
+
+      // Get groups to get the group name
+      const groups = await this.db.getGroups();
+      const group = groups.find((g: any) => g.id === groupId);
+
+      // Get tasks for the project
+      const tasks = await this.db.getTasks({ projectId: project.id });
+
+      console.log(`🤖 Calling AI for timeline update...`);
+      console.log(`   Context: ${contextResult.context.substring(0, 100)}...`);
+      console.log(`   Messages: ${messageDeltas.length} deltas`);
+
+      // Call AI to generate timeline update
+      const result = await this.aiService.generateGanttChart({
+        context: contextResult.context,
+        groupName: group?.name || 'Project',
+        tasks,
+        projects: [project]
+      });
+
+      if (result && result.mermaidSyntax) {
+        // Update project with new Gantt chart
+        await this.db.updateProject(project.id, {
+          ganttChart: result.mermaidSyntax,
+          timelineUpdatedAt: Date.now(),
+          timelineVersion: (project.timelineVersion || 0) + 1,
+          updatedAt: Date.now()
+        });
+
+        console.log(`✅ Timeline updated for group ${groupId}`);
+        console.log(`   Version: ${(project.timelineVersion || 0) + 1}`);
+      }
 
       // Clear queue
       this.queues.set(groupId, []);
