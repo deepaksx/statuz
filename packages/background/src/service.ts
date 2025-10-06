@@ -9,6 +9,7 @@ import { ContextLoader } from './context/loader.js';
 import { SnapshotGenerator } from './snapshot/generator.js';
 import { parseWhatsAppChat } from './utils/whatsapp-parser.js';
 import { AIService } from './ai-service.js';
+import { TimelineEngine } from './timeline-engine.js';
 import type {
   WhatsAppConnectionState,
   Group,
@@ -17,6 +18,7 @@ import type {
   SnapshotReport,
   AppConfig
 } from '@aipm/shared';
+import type { TimelineState, ContextDelta, MessageDelta } from './types/timeline.js';
 import { eventBus } from '@aipm/event-bus';
 import { ParserAgent, BatchAnalysisAgent } from '@aipm/agents';
 import type { BatchAnalysisResult } from '@aipm/agents';
@@ -36,6 +38,7 @@ export class BackgroundService extends EventEmitter {
   private contextLoader: ContextLoader;
   private snapshotGenerator: SnapshotGenerator;
   private aiService: AIService;
+  private timelineEngine!: TimelineEngine;
   private parserAgent: ParserAgent | null = null;
   private batchAnalysisAgent: BatchAnalysisAgent | null = null;
   private config: AppConfig;
@@ -63,6 +66,7 @@ export class BackgroundService extends EventEmitter {
     this.contextLoader = new ContextLoader(join(process.cwd(), 'context'));
     this.snapshotGenerator = new SnapshotGenerator(this.db);
     this.aiService = new AIService();
+    this.timelineEngine = new TimelineEngine(this.db, this.aiService);
 
     // Initialize AI Agents if Gemini API key is available
     if (config.geminiApiKey) {
@@ -349,6 +353,18 @@ export class BackgroundService extends EventEmitter {
 
       // Initialize WhatsApp client
       await this.whatsappClient.initialize();
+
+      // Initialize Timeline Engine
+      await this.timelineEngine.initialize();
+
+      // Subscribe timeline engine to event bus
+      eventBus.on('timeline:messageDelta', async (delta: MessageDelta) => {
+        await this.timelineEngine.onMessageDelta(delta);
+      });
+
+      eventBus.on('timeline:contextDelta', async (delta: ContextDelta) => {
+        await this.timelineEngine.onContextDelta(delta);
+      });
 
       this.db.auditLog('SERVICE_START', 'Background service started');
     } catch (error) {
@@ -987,10 +1003,6 @@ export class BackgroundService extends EventEmitter {
     return this.isRunning;
   }
 
-  async getGroupContext(groupId: string) {
-    return await this.db.getGroupContext(groupId);
-  }
-
   async updateGroupContext(groupId: string, context: string) {
     return await this.db.updateGroupContext(groupId, context);
   }
@@ -1221,5 +1233,49 @@ export class BackgroundService extends EventEmitter {
 
   async getConflicts() {
     return await this.db.getConflicts();
+  }
+
+  // ==================== TIMELINE ENGINE API ====================
+
+  /**
+   * Get timeline state for a group
+   */
+  async getTimelineState(groupId: string): Promise<TimelineState | null> {
+    return await this.timelineEngine.getState(groupId);
+  }
+
+  /**
+   * Force immediate timeline refresh (bypass debounce)
+   */
+  async forceTimelineRefresh(groupId: string): Promise<void> {
+    await this.timelineEngine.forceRefresh(groupId);
+  }
+
+  /**
+   * Get timeline event history
+   */
+  async getTimelineHistory(groupId: string, limit?: number): Promise<any[]> {
+    return await this.timelineEngine.getHistory(groupId, limit);
+  }
+
+  /**
+   * Save group context and emit delta for timeline processing
+   */
+  async saveGroupContext(groupId: string, context: string): Promise<void> {
+    await this.db.updateGroupContext(groupId, context);
+
+    // Emit context delta for timeline engine
+    eventBus.emit('timeline:contextDelta', {
+      groupId,
+      fullContext: context,
+      timestamp: Date.now()
+    } as ContextDelta);
+  }
+
+  /**
+   * Get group context
+   */
+  async getGroupContext(groupId: string): Promise<{ context: string } | null> {
+    return await this.db.getGroupContext(groupId);
   }
 }

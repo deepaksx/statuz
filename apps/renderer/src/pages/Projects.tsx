@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import type { Project } from '@aipm/shared';
 import { MermaidChart } from '../components/MermaidChart';
-import { ChevronDown, ChevronRight, BarChart3, Maximize2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, BarChart3, Maximize2, X, RefreshCw } from 'lucide-react';
 
 export default function Projects() {
   const { getProjects, getTasks } = useApp();
@@ -11,10 +11,55 @@ export default function Projects() {
   const [taskCounts, setTaskCounts] = useState<Record<string, { total: number; done: number; todo: number; inProgress: number }>>({});
   const [expandedGantt, setExpandedGantt] = useState<string | null>(null);
   const [fullScreenGantt, setFullScreenGantt] = useState<{ projectId: string; projectName: string; chart: string } | null>(null);
+  const [liveProjects, setLiveProjects] = useState<Set<string>>(new Set());
+  const [refreshingProjects, setRefreshingProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // Poll for live status every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const live = new Set<string>();
+      projects.forEach(p => {
+        if (isLive(p)) live.add(p.id);
+      });
+      setLiveProjects(live);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [projects]);
+
+  // Check if project is "live" (updated in last 15s)
+  const isLive = (project: Project) => {
+    if (!project.timelineUpdatedAt) return false;
+    return Date.now() - project.timelineUpdatedAt < 15000;
+  };
+
+  // Handle force timeline refresh
+  const handleForceRefresh = async (groupId: string, projectId: string) => {
+    try {
+      setRefreshingProjects(prev => new Set(prev).add(projectId));
+      await window.electron.invoke('timeline:forceRefresh', groupId);
+      // Wait a bit for the timeline to update
+      setTimeout(async () => {
+        await loadProjects();
+        setRefreshingProjects(prev => {
+          const next = new Set(prev);
+          next.delete(projectId);
+          return next;
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to refresh timeline:', error);
+      setRefreshingProjects(prev => {
+        const next = new Set(prev);
+        next.delete(projectId);
+        return next;
+      });
+    }
+  };
 
   const loadProjects = async () => {
     try {
@@ -112,9 +157,17 @@ export default function Projects() {
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-1">
-                  {project.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    {project.name}
+                  </h3>
+                  {liveProjects.has(project.id) && (
+                    <span className="px-2 py-1 text-xs bg-green-500 text-white rounded-full flex items-center gap-1">
+                      <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      Live
+                    </span>
+                  )}
+                </div>
                 {project.code && (
                   <div className="text-xs text-gray-500 font-mono">{project.code}</div>
                 )}
@@ -217,18 +270,31 @@ export default function Projects() {
 
             {/* Gantt Chart Section - Always show */}
             <div className="border-t border-gray-700 pt-3 mt-3">
-              <button
-                onClick={() => setExpandedGantt(expandedGantt === project.id ? null : project.id)}
-                className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors w-full"
-              >
-                {expandedGantt === project.id ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setExpandedGantt(expandedGantt === project.id ? null : project.id)}
+                  className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  {expandedGantt === project.id ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Project Timeline (Gantt Chart)</span>
+                </button>
+                {project.whatsappGroupId && (
+                  <button
+                    onClick={() => handleForceRefresh(project.whatsappGroupId!, project.id)}
+                    disabled={refreshingProjects.has(project.id)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Force refresh timeline from latest messages"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${refreshingProjects.has(project.id) ? 'animate-spin' : ''}`} />
+                    {refreshingProjects.has(project.id) ? 'Refreshing...' : 'Refresh'}
+                  </button>
                 )}
-                <BarChart3 className="h-4 w-4" />
-                <span>Project Timeline (Gantt Chart)</span>
-              </button>
+              </div>
 
               {expandedGantt === project.id && (
                 <div className="mt-3 bg-white rounded-lg p-4 border border-gray-700 overflow-auto">

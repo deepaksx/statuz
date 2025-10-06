@@ -226,6 +226,32 @@ class StatuzApp {
       await shell.openExternal(url);
     });
 
+    // Timeline IPC Handlers
+    ipcMain.handle('timeline:getState', async (_, groupId: string) => {
+      await this.backgroundServiceReady;
+      if (!this.backgroundService) {
+        throw new Error('Background service not initialized');
+      }
+      return await this.backgroundService.getTimelineState(groupId);
+    });
+
+    ipcMain.handle('timeline:forceRefresh', async (_, groupId: string) => {
+      await this.backgroundServiceReady;
+      if (!this.backgroundService) {
+        throw new Error('Background service not initialized');
+      }
+      await this.backgroundService.forceTimelineRefresh(groupId);
+      return { success: true };
+    });
+
+    ipcMain.handle('timeline:getHistory', async (_, groupId: string, limit?: number) => {
+      await this.backgroundServiceReady;
+      if (!this.backgroundService) {
+        throw new Error('Background service not initialized');
+      }
+      return await this.backgroundService.getTimelineHistory(groupId, limit);
+    });
+
     // App info
     ipcMain.handle('get-app-version', () => {
       return app.getVersion();

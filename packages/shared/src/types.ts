@@ -149,6 +149,9 @@ export interface Project {
   technicalLead?: string;
   description?: string;
   ganttChart?: string; // Mermaid Gantt chart syntax
+  timelineUpdatedAt?: number; // Timeline engine last update timestamp
+  timelineVersion?: number; // Timeline engine version counter
+  lastAiReasoning?: string; // Timeline engine last AI reasoning
   createdAt: number;
   updatedAt: number;
 }

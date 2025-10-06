@@ -41,6 +41,11 @@ export class StatuzDatabase {
       // Run migrations to add new columns if they don't exist
       this.runMigrations();
 
+      // Run timeline migrations
+      this.runTimelineMigrations().catch(err => {
+        console.error('Timeline migration error:', err);
+      });
+
       this.auditLog('DATABASE_INIT', 'Database initialized');
     });
   }
@@ -1118,6 +1123,226 @@ export class StatuzDatabase {
           createdAt: row.created_at,
           updatedAt: row.updated_at
         })));
+      });
+    });
+  }
+
+  // ===== TIMELINE ENGINE METHODS =====
+
+  /**
+   * Insert event log entry for timeline tracking
+   */
+  insertEventLog(entry: { id: string; groupId: string; source: string; payload: string; createdAt: number }): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.db.run(`
+        INSERT INTO event_log (id, groupId, source, payload, createdAt)
+        VALUES (?, ?, ?, ?, ?)
+      `, [entry.id, entry.groupId, entry.source, entry.payload, entry.createdAt], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  /**
+   * Get event log for a group
+   */
+  getEventLog(groupId: string, limit: number = 100): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.db.all(`
+        SELECT * FROM event_log
+        WHERE groupId = ?
+        ORDER BY createdAt DESC
+        LIMIT ?
+      `, [groupId, limit], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Insert task history entry
+   */
+  insertTaskHistory(entry: { id: string; taskId: string; change: string; at: number }): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.db.run(`
+        INSERT INTO task_history (id, taskId, change, at)
+        VALUES (?, ?, ?, ?)
+      `, [entry.id, entry.taskId, entry.change, entry.at], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  /**
+   * Get task history
+   */
+  getTaskHistory(taskId: string, limit: number = 50): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      this.db.all(`
+        SELECT * FROM task_history
+        WHERE taskId = ?
+        ORDER BY at DESC
+        LIMIT ?
+      `, [taskId, limit], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Save milestone
+   */
+  saveMilestone(milestone: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.db.run(`
+        INSERT INTO milestones (id, groupId, projectId, title, description, dueDate, status, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        milestone.id,
+        milestone.groupId,
+        milestone.projectId,
+        milestone.title,
+        milestone.description,
+        milestone.dueDate,
+        milestone.status,
+        milestone.createdAt
+      ], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  /**
+   * Update milestone
+   */
+  updateMilestone(id: string, updates: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+      const values = [...Object.values(updates), id];
+
+      this.db.run(`
+        UPDATE milestones
+        SET ${fields}
+        WHERE id = ?
+      `, values, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  /**
+   * Run timeline migrations
+   */
+  async runTimelineMigrations(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        // Create migrations table if needed
+        this.db.run(`
+          CREATE TABLE IF NOT EXISTS _migrations (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            applied_at INTEGER NOT NULL
+          )
+        `, (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Check if migration 001 already applied
+          this.db.get('SELECT id FROM _migrations WHERE id = 1', (err, row) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            if (row) {
+              console.log('✅ Timeline migration already applied');
+              resolve();
+              return;
+            }
+
+            // Apply migration 001
+            console.log('⏳ Applying timeline migration 001...');
+
+            const migrationSQL = `
+              -- Event log table
+              CREATE TABLE IF NOT EXISTS event_log (
+                id TEXT PRIMARY KEY,
+                groupId TEXT NOT NULL,
+                source TEXT NOT NULL CHECK(source IN ('context', 'whatsapp')),
+                payload TEXT NOT NULL,
+                createdAt INTEGER NOT NULL
+              );
+
+              CREATE INDEX IF NOT EXISTS idx_event_log_groupId ON event_log(groupId);
+              CREATE INDEX IF NOT EXISTS idx_event_log_createdAt ON event_log(createdAt);
+              CREATE INDEX IF NOT EXISTS idx_event_log_source ON event_log(source);
+
+              -- Task history table
+              CREATE TABLE IF NOT EXISTS task_history (
+                id TEXT PRIMARY KEY,
+                taskId TEXT NOT NULL,
+                change TEXT NOT NULL,
+                at INTEGER NOT NULL
+              );
+
+              CREATE INDEX IF NOT EXISTS idx_task_history_taskId ON task_history(taskId);
+              CREATE INDEX IF NOT EXISTS idx_task_history_at ON task_history(at);
+            `;
+
+            this.db.exec(migrationSQL, (err) => {
+              if (err) {
+                console.error('❌ Timeline migration failed:', err);
+                reject(err);
+                return;
+              }
+
+              // Add columns to projects table
+              const alterQueries = [
+                'ALTER TABLE projects ADD COLUMN timelineUpdatedAt INTEGER',
+                'ALTER TABLE projects ADD COLUMN timelineVersion INTEGER DEFAULT 0',
+                'ALTER TABLE projects ADD COLUMN lastAiReasoning TEXT'
+              ];
+
+              let completed = 0;
+              const total = alterQueries.length;
+
+              alterQueries.forEach(query => {
+                this.db.run(query, (err) => {
+                  // Ignore "duplicate column" errors
+                  if (err && !err.message.includes('duplicate column')) {
+                    console.error(`❌ Failed to alter projects table:`, err);
+                  }
+                  completed++;
+
+                  if (completed === total) {
+                    // Mark migration as applied
+                    this.db.run(
+                      'INSERT INTO _migrations (id, name, applied_at) VALUES (?, ?, ?)',
+                      [1, 'add_timeline_tables', Date.now()],
+                      (err) => {
+                        if (err) {
+                          console.error('❌ Failed to record migration:', err);
+                          reject(err);
+                        } else {
+                          console.log('✅ Timeline migration 001 applied successfully');
+                          resolve();
+                        }
+                      }
+                    );
+                  }
+                });
+              });
+            });
+          });
+        });
       });
     });
   }

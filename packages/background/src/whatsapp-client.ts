@@ -4,6 +4,8 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 import QRCode from 'qrcode-terminal';
 import { EventEmitter } from 'events';
 import type { WhatsAppConnectionState, Group, Message } from '@aipm/shared';
+import { eventBus } from '@aipm/event-bus';
+import type { MessageDelta } from './types/timeline.js';
 
 // Event constants
 const Events = {
@@ -131,6 +133,17 @@ export class WhatsAppClient extends EventEmitter {
 
         console.log(`🚀 Emitting 'message' event for group: ${chat.name}`);
         this.emit('message', processedMessage);
+
+        // Emit timeline delta for timeline engine
+        const delta: MessageDelta = {
+          groupId: chat.id._serialized,
+          author: contact.id._serialized,
+          authorName: contact.name || contact.pushname || undefined,
+          text: message.body,
+          timestamp: message.timestamp * 1000,
+          isFromMe: false
+        };
+        eventBus.emit('timeline:messageDelta', delta);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
 
