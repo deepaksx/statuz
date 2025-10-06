@@ -47,22 +47,38 @@ export function MermaidChart({ chart, className = '' }: MermaidChartProps) {
 
   useEffect(() => {
     const renderChart = async () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current) {
+        console.warn('MermaidChart: Container ref not available');
+        return;
+      }
+
+      console.log('MermaidChart: Rendering chart', {
+        chartLength: chart?.length,
+        chartPreview: chart?.substring(0, 100)
+      });
 
       try {
         // Clear previous chart
         containerRef.current.innerHTML = '';
 
+        if (!chart || chart.trim() === '') {
+          throw new Error('Empty chart data provided');
+        }
+
         // Render the chart
         const { svg } = await mermaid.render(chartId.current, chart);
+
+        console.log('MermaidChart: Successfully rendered', { svgLength: svg.length });
 
         // Insert the SVG into the container
         containerRef.current.innerHTML = svg;
       } catch (error) {
-        console.error('Failed to render Mermaid chart:', error);
+        console.error('MermaidChart: Failed to render', error);
+        console.error('MermaidChart: Chart data:', chart);
         containerRef.current.innerHTML = `
           <div class="p-4 bg-red-900/20 border border-red-500/30 rounded text-red-300 text-sm">
             <strong>Error rendering chart:</strong> ${error instanceof Error ? error.message : 'Unknown error'}
+            <pre class="mt-2 text-xs overflow-auto max-h-32">${chart?.substring(0, 200) || 'No chart data'}</pre>
           </div>
         `;
       }
