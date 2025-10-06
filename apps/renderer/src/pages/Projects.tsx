@@ -214,29 +214,37 @@ export default function Projects() {
               </div>
             )}
 
-            {/* Gantt Chart Section */}
-            {project.ganttChart && (
-              <div className="border-t border-gray-700 pt-3 mt-3">
-                <button
-                  onClick={() => setExpandedGantt(expandedGantt === project.id ? null : project.id)}
-                  className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors w-full"
-                >
-                  {expandedGantt === project.id ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Project Timeline (Gantt Chart)</span>
-                </button>
-
-                {expandedGantt === project.id && (
-                  <div className="mt-3 bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
-                    <MermaidChart chart={project.ganttChart} className="min-w-full" />
-                  </div>
+            {/* Gantt Chart Section - Always show */}
+            <div className="border-t border-gray-700 pt-3 mt-3">
+              <button
+                onClick={() => setExpandedGantt(expandedGantt === project.id ? null : project.id)}
+                className="flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors w-full"
+              >
+                {expandedGantt === project.id ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
                 )}
-              </div>
-            )}
+                <BarChart3 className="h-4 w-4" />
+                <span>Project Timeline (Gantt Chart)</span>
+              </button>
+
+              {expandedGantt === project.id && (
+                <div className="mt-3 bg-gray-900 rounded-lg p-4 border border-gray-700 overflow-x-auto">
+                  {project.ganttChart ? (
+                    <MermaidChart chart={project.ganttChart} className="min-w-full" />
+                  ) : (
+                    <div className="text-center py-6 text-gray-500 text-sm">
+                      <BarChart3 className="h-8 w-8 mx-auto mb-2 text-gray-600" />
+                      <p>No Gantt chart available yet</p>
+                      <p className="text-xs mt-1">
+                        Go to <span className="text-blue-400">Groups</span> tab and click <span className="text-blue-400">Extract</span> to generate timeline
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
