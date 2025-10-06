@@ -837,26 +837,37 @@ export class BackgroundService extends EventEmitter {
       // Step 7: Generate Gantt Chart
       console.log(`📊 Generating Gantt chart for project ${project.id}...`);
       try {
-        const allTasks = await this.db.getTasks({ projectId: project.id });
-        console.log(`   Found ${allTasks.length} tasks for Gantt chart`);
+        // Ensure AI service has API key
+        if (!this.aiService.hasApiKey() && this.config.geminiApiKey) {
+          console.log(`   Setting Gemini API key for Gantt generation`);
+          this.aiService.setApiKey(this.config.geminiApiKey);
+        }
 
-        const ganttResult = await this.aiService.generateGanttChart({
-          context: groupContext || analysisResult.projectDescription || '',
-          groupName: group.name,
-          tasks: allTasks,
-          projects: [project]
-        });
+        if (!this.aiService.hasApiKey()) {
+          console.warn(`⚠️  Skipping Gantt chart generation - No API key available`);
+          console.warn(`   Set your Gemini API key in Settings to enable Gantt chart generation`);
+        } else {
+          const allTasks = await this.db.getTasks({ projectId: project.id });
+          console.log(`   Found ${allTasks.length} tasks for Gantt chart`);
 
-        console.log(`   Generated Gantt syntax (${ganttResult.mermaidSyntax.length} chars)`);
+          const ganttResult = await this.aiService.generateGanttChart({
+            context: groupContext || analysisResult.projectDescription || '',
+            groupName: group.name,
+            tasks: allTasks,
+            projects: [project]
+          });
 
-        // Update project with Gantt chart
-        await this.db.updateProject(project.id, { ganttChart: ganttResult.mermaidSyntax });
-        console.log(`✅ Gantt chart generated and saved to project ${project.id}`);
+          console.log(`   Generated Gantt syntax (${ganttResult.mermaidSyntax.length} chars)`);
 
-        // Verify it was saved
-        const updatedProject = await this.db.getProjects({ status: 'active' });
-        const verifyProject = updatedProject.find(p => p.id === project.id);
-        console.log(`   Verification: ganttChart field exists = ${!!verifyProject?.ganttChart}`);
+          // Update project with Gantt chart
+          await this.db.updateProject(project.id, { ganttChart: ganttResult.mermaidSyntax });
+          console.log(`✅ Gantt chart generated and saved to project ${project.id}`);
+
+          // Verify it was saved
+          const updatedProject = await this.db.getProjects({ status: 'active' });
+          const verifyProject = updatedProject.find(p => p.id === project.id);
+          console.log(`   Verification: ganttChart field exists = ${!!verifyProject?.ganttChart}`);
+        }
       } catch (ganttError) {
         console.error(`⚠️  Failed to generate Gantt chart:`, ganttError);
         console.error(`   Error details:`, ganttError instanceof Error ? ganttError.message : String(ganttError));
