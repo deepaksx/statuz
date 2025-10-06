@@ -351,19 +351,26 @@ export class BackgroundService extends EventEmitter {
         // Continue anyway - context is optional
       }
 
-      // Initialize WhatsApp client
-      await this.whatsappClient.initialize();
+      // Initialize Timeline Engine (non-blocking, independent of WhatsApp)
+      try {
+        await this.timelineEngine.initialize();
 
-      // Initialize Timeline Engine
-      await this.timelineEngine.initialize();
+        // Subscribe timeline engine to event bus
+        eventBus.on('timeline:messageDelta', async (delta: MessageDelta) => {
+          await this.timelineEngine.onMessageDelta(delta);
+        });
 
-      // Subscribe timeline engine to event bus
-      eventBus.on('timeline:messageDelta', async (delta: MessageDelta) => {
-        await this.timelineEngine.onMessageDelta(delta);
-      });
+        eventBus.on('timeline:contextDelta', async (delta: ContextDelta) => {
+          await this.timelineEngine.onContextDelta(delta);
+        });
+      } catch (error) {
+        console.error('Failed to initialize Timeline Engine:', error);
+        // Continue anyway - Timeline is optional
+      }
 
-      eventBus.on('timeline:contextDelta', async (delta: ContextDelta) => {
-        await this.timelineEngine.onContextDelta(delta);
+      // Initialize WhatsApp client (in background, don't block)
+      this.whatsappClient.initialize().catch(error => {
+        console.error('WhatsApp initialization error:', error);
       });
 
       this.db.auditLog('SERVICE_START', 'Background service started');
