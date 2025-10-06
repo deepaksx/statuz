@@ -10,9 +10,18 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [taskCounts, setTaskCounts] = useState<Record<string, { total: number; done: number; todo: number; inProgress: number }>>({});
   const [expandedGantt, setExpandedGantt] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     loadProjects();
+  }, [refreshKey]);
+
+  // Auto-refresh every 5 seconds to catch updates from extraction
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadProjects = async () => {
