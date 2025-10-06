@@ -835,9 +835,11 @@ export class BackgroundService extends EventEmitter {
       console.log(`   - Decisions: ${decisionsCreated}`);
 
       // Step 7: Generate Gantt Chart
-      console.log(`📊 Generating Gantt chart...`);
+      console.log(`📊 Generating Gantt chart for project ${project.id}...`);
       try {
         const allTasks = await this.db.getTasks({ projectId: project.id });
+        console.log(`   Found ${allTasks.length} tasks for Gantt chart`);
+
         const ganttResult = await this.aiService.generateGanttChart({
           context: groupContext || analysisResult.projectDescription || '',
           groupName: group.name,
@@ -845,11 +847,19 @@ export class BackgroundService extends EventEmitter {
           projects: [project]
         });
 
+        console.log(`   Generated Gantt syntax (${ganttResult.mermaidSyntax.length} chars)`);
+
         // Update project with Gantt chart
         await this.db.updateProject(project.id, { ganttChart: ganttResult.mermaidSyntax });
-        console.log(`✅ Gantt chart generated and saved`);
+        console.log(`✅ Gantt chart generated and saved to project ${project.id}`);
+
+        // Verify it was saved
+        const updatedProject = await this.db.getProjects({ status: 'active' });
+        const verifyProject = updatedProject.find(p => p.id === project.id);
+        console.log(`   Verification: ganttChart field exists = ${!!verifyProject?.ganttChart}`);
       } catch (ganttError) {
         console.error(`⚠️  Failed to generate Gantt chart:`, ganttError);
+        console.error(`   Error details:`, ganttError instanceof Error ? ganttError.message : String(ganttError));
         // Continue even if Gantt chart generation fails
       }
 
