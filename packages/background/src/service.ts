@@ -1011,7 +1011,8 @@ export class BackgroundService extends EventEmitter {
   }
 
   async updateGroupContext(groupId: string, context: string) {
-    return await this.db.updateGroupContext(groupId, context);
+    // Use saveGroupContext to emit timeline delta
+    return await this.saveGroupContext(groupId, context);
   }
 
   async deleteGroupContext(groupId: string) {
